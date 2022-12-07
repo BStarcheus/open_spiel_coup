@@ -35,23 +35,21 @@ namespace open_spiel {
 namespace coup {
 namespace {
 
-constexpr double kAnte = 1;
-
 const GameType kGameType{/*short_name=*/"coup",
                          /*long_name=*/"Coup",
                          GameType::Dynamics::kSequential,
                          GameType::ChanceMode::kExplicitStochastic,
                          GameType::Information::kImperfectInformation,
                          GameType::Utility::kZeroSum,
-                         GameType::RewardModel::kTerminal,
-                         /*max_num_players=*/10,
+                         GameType::RewardModel::kRewards,
+                         /*max_num_players=*/2,
                          /*min_num_players=*/2,
                          /*provides_information_state_string=*/true,
                          /*provides_information_state_tensor=*/true,
                          /*provides_observation_string=*/true,
                          /*provides_observation_tensor=*/true,
                          /*parameter_specification=*/
-                         {{"players", GameParameter(kDefaultPlayers)},
+                         {{"players", GameParameter(kNumPlayers)},
                           {"action_mapping", GameParameter(false)},
                           {"suit_isomorphism", GameParameter(false)}}};
 
@@ -251,38 +249,7 @@ class CoupObserver : public Observer {
 CoupState::CoupState(std::shared_ptr<const Game> game, bool action_mapping,
                        bool suit_isomorphism)
     : State(game),
-      cur_player_(kChancePlayerId),
-      num_calls_(0),
-      num_raises_(0),
-      round_(1),   // Round number (1 or 2).
-      stakes_(1),  // The current 'level' of the bet.
-      num_winners_(-1),
-      pot_(kAnte * game->NumPlayers()),  // Number of chips in the pot.
-      public_card_(kInvalidCard),
-      // Number of cards remaining; not equal deck_.size()!
-      deck_size_((game->NumPlayers() + 1) * kNumSuits),
-      private_cards_dealt_(0),
-      remaining_players_(game->NumPlayers()),
-      // Is this player a winner? Indexed by pid.
-      winner_(game->NumPlayers(), false),
-      // Each player's single private card. Indexed by pid.
-      private_cards_(game->NumPlayers(), kInvalidCard),
-      // How much money each player has, indexed by pid.
-      money_(game->NumPlayers(), kStartingMoney - kAnte),
-      // How much each player has contributed to the pot, indexed by pid.
-      ante_(game->NumPlayers(), kAnte),
-      // Flag for whether the player has folded, indexed by pid.
-      folded_(game->NumPlayers(), false),
-      // Sequence of actions for each round. Needed to report information
-      // state.
-      round1_sequence_(),
-      round2_sequence_(),
-      // Always regard all actions as legal, and internally map otherwise
-      // illegal actions to check/call.
-      action_mapping_(action_mapping),
-      // Players cannot distinguish between cards of different suits with the
-      // same rank.
-      suit_isomorphism_(suit_isomorphism) {
+      cur_player_(kChancePlayerId) {
   // Cards by value (0-6 for standard 2-player game, kInvalidCard if no longer
   // in the deck.)
   deck_.resize(deck_size_);
@@ -299,7 +266,7 @@ int CoupState::CurrentPlayer() const {
 
 // In a chance node, `move` should be the card to deal to the current
 // underlying player.
-// On a player node, it should be ActionType::{kFold, kCall, kRaise}
+// On a player node, it should be ActionType
 void CoupState::DoApplyAction(Action move) {
   if (IsChanceNode()) {
     SPIEL_CHECK_GE(move, 0);
@@ -592,159 +559,6 @@ int CoupState::NextPlayer() const {
   SpielFatalError("Error in CoupState::NextPlayer(), should not get here.");
 }
 
-int CoupState::RankHand(Player player) const {
-  int hand[] = {public_card_, private_cards_[player]};
-  // Put the lower card in slot 0, the higher in slot 1.
-  if (hand[0] > hand[1]) {
-    std::swap(hand[0], hand[1]);
-  }
-
-  if (suit_isomorphism_) {
-    int num_cards = deck_.size() / 2;
-    if (hand[0] == hand[1]) {
-      // Pair! Offset by deck_size_^2 to put higher than every singles combo.
-      return (num_cards * num_cards + hand[0]);
-    } else {
-      // Otherwise card value dominates. Suit isomorphism has already removed
-      // the distinction between suits, so we can compare the ranks directly.
-      // This could lead to ties/draws and/or multiple winners.
-      return hand[1] * num_cards + hand[0];
-    }
-  }
-
-  // E.g. rank for two players:
-  // 0 J1, 1 J2, 2 Q1, 3 Q2, 4 K1, 5 K2.
-  int num_cards = deck_.size();
-
-  if (hand[0] % 2 == 0 && hand[1] == hand[0] + 1) {
-    // Pair! Offset by deck_size_^2 to put higher than every singles combo.
-    return (num_cards * num_cards + hand[0]);
-  } else {
-    // Otherwise card value dominates. No high/low suit: only two suits, and
-    // given ordering above, dividing by gets the value (integer division
-    // intended.) This could lead to ties/draws and/or multiple winners.
-    return (hand[1] / 2) * num_cards + (hand[0] / 2);
-  }
-}
-
-void CoupState::ResolveWinner() {
-  num_winners_ = kInvalidPlayer;
-
-  if (remaining_players_ == 1) {
-    // Only one left in? They get the pot!
-    for (Player player_index = 0; player_index < num_players_; player_index++) {
-      if (!folded_[player_index]) {
-        num_winners_ = 1;
-        winner_[player_index] = true;
-        money_[player_index] += pot_;
-        pot_ = 0;
-        return;
-      }
-    }
-
-  } else {
-    // Otherwise, showdown!
-    // Find the best hand among those still in.
-    SPIEL_CHECK_NE(public_card_, kInvalidCard);
-    int best_hand_rank = -1;
-    num_winners_ = 0;
-    std::fill(winner_.begin(), winner_.end(), false);
-
-    for (Player player_index = 0; player_index < num_players_; player_index++) {
-      if (!folded_[player_index]) {
-        int rank = RankHand(player_index);
-        if (rank > best_hand_rank) {
-          // Beat the current best hand! Clear the winners list, then add.
-          best_hand_rank = rank;
-          std::fill(winner_.begin(), winner_.end(), false);
-          winner_[player_index] = true;
-          num_winners_ = 1;
-        } else if (rank == best_hand_rank) {
-          // Tied with best hand rank, so this player is a winner as well.
-          winner_[player_index] = true;
-          num_winners_++;
-        }
-      }
-    }
-
-    // Split the pot among the winners (possibly only one).
-    SPIEL_CHECK_TRUE(1 <= num_winners_ && num_winners_ <= num_players_);
-    for (Player player_index = 0; player_index < num_players_; player_index++) {
-      if (winner_[player_index]) {
-        // Give this player their share.
-        money_[player_index] += static_cast<double>(pot_) / num_winners_;
-      }
-    }
-    pot_ = 0;
-  }
-}
-
-bool CoupState::ReadyForNextRound() const {
-  return ((num_raises_ == 0 && num_calls_ == remaining_players_) ||
-          (num_raises_ > 0 && num_calls_ == (remaining_players_ - 1)));
-}
-
-void CoupState::NewRound() {
-  SPIEL_CHECK_EQ(round_, 1);
-  round_++;
-  num_raises_ = 0;
-  num_calls_ = 0;
-  cur_player_ = kChancePlayerId;  // Public card.
-}
-
-void CoupState::SequenceAppendMove(int move) {
-  if (round_ == 1) {
-    round1_sequence_.push_back(move);
-  } else {
-    SPIEL_CHECK_EQ(round_, 2);
-    round2_sequence_.push_back(move);
-  }
-}
-
-void CoupState::Ante(Player player, int amount) {
-  pot_ += amount;
-  ante_[player] += amount;
-  money_[player] -= amount;
-}
-
-std::vector<int> CoupState::padded_betting_sequence() const {
-  std::vector<int> history = round1_sequence_;
-
-  // We pad the history to the end of the first round with kPaddingAction.
-  history.resize(game_->MaxGameLength() / 2, kInvalidAction);
-
-  // We insert the actions that happened in the second round, and fill to
-  // MaxGameLength.
-  history.insert(history.end(), round2_sequence_.begin(),
-                 round2_sequence_.end());
-  history.resize(game_->MaxGameLength(), kInvalidAction);
-  return history;
-}
-
-void CoupState::SetPrivate(Player player, Action move) {
-  // Round 1. `move` refers to the card value to deal to the current
-  // underlying player (given by `private_cards_dealt_`).
-  if (suit_isomorphism_) {
-    // Consecutive cards are identical under suit isomorphism.
-    private_cards_[player] = move;
-    if (deck_[move * 2] != kInvalidCard) {
-      deck_[move * 2] = kInvalidCard;
-    } else if (deck_[move * 2 + 1] != kInvalidCard) {
-      deck_[move * 2 + 1] = kInvalidCard;
-    } else {
-      SpielFatalError("Suit isomorphism error.");
-    }
-  } else {
-    private_cards_[player] = deck_[move];
-    deck_[move] = kInvalidCard;
-  }
-  --deck_size_;
-  ++private_cards_dealt_;
-
-  // When all private cards are dealt, move to player 0.
-  if (private_cards_dealt_ == num_players_) cur_player_ = 0;
-}
-
 std::unique_ptr<State> CoupState::ResampleFromInfostate(
     int player_id, std::function<double()> rng) const {
   std::unique_ptr<State> clone = game_->NewInitialState();
@@ -768,17 +582,6 @@ std::unique_ptr<State> CoupState::ResampleFromInfostate(
     for (int action : round2_sequence_) clone->ApplyAction(action);
   }
   return clone;
-}
-
-int CoupState::NumObservableCards() const {
-  return suit_isomorphism_ ? deck_.size() / 2 : deck_.size();
-}
-
-int CoupState::MaxBetsPerRound() const { return 3 * num_players_ - 2; }
-
-void CoupState::SetPrivateCards(const std::vector<int>& new_private_cards) {
-  SPIEL_CHECK_EQ(new_private_cards.size(), NumPlayers());
-  private_cards_ = new_private_cards;
 }
 
 CoupGame::CoupGame(const GameParameters& params)
@@ -830,23 +633,11 @@ std::vector<int> CoupGame::ObservationTensorShape() const {
 }
 
 double CoupGame::MaxUtility() const {
-  // In poker, the utility is defined as the money a player has at the end of
-  // the game minus then money the player had before starting the game.
-  // The most a player can win *per opponent* is the most each player can put
-  // into the pot, which is the raise amounts on each round times the maximum
-  // number raises, plus the original chip they put in to play.
-  return (num_players_ - 1) * (kTotalRaisesPerRound * kFirstRaiseAmount +
-                               kTotalRaisesPerRound * kSecondRaiseAmount + 1);
+  return 2;
 }
 
 double CoupGame::MinUtility() const {
-  // In poker, the utility is defined as the money a player has at the end of
-  // the game minus then money the player had before starting the game.
-  // The most any single player can lose is the maximum number of raises per
-  // round times the amounts of each of the raises, plus the original chip
-  // they put in to play.
-  return -1 * (kTotalRaisesPerRound * kFirstRaiseAmount +
-               kTotalRaisesPerRound * kSecondRaiseAmount + 1);
+  return -2;
 }
 
 std::shared_ptr<Observer> CoupGame::MakeObserver(

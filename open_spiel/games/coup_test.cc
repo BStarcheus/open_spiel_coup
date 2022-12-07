@@ -31,10 +31,6 @@ void BasicCoupTests() {
                          {{"action_mapping", GameParameter(true)}}), 100);
   testing::RandomSimTest(*LoadGame("coup",
                          {{"suit_isomorphism", GameParameter(true)}}), 100);
-  for (Player players = 3; players <= 5; players++) {
-    testing::RandomSimTest(
-        *LoadGame("coup", {{"players", GameParameter(players)}}), 100);
-  }
   testing::ResampleInfostateTest(*LoadGame("coup"), /*num_sims=*/100);
   auto observer = LoadGame("coup")
                       ->MakeObserver(kDefaultObsType,

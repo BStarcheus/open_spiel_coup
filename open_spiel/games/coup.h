@@ -50,34 +50,68 @@
 namespace open_spiel {
 namespace coup {
 
-// Default parameters.
+// Parameters
 
 inline constexpr int kInvalidCard = -10000;
-inline constexpr int kDefaultPlayers = 2;
-inline constexpr int kNumSuits = 2;
-inline constexpr int kFirstRaiseAmount = 2;
-inline constexpr int kSecondRaiseAmount = 4;
-inline constexpr int kTotalRaisesPerRound = 2;
-inline constexpr int kMaxRaises = 2;
-inline constexpr int kStartingMoney = 100;
-
-// Number of info states in the 2P game with default params.
-inline constexpr int kNumInfoStates = 936;
+inline constexpr int kNumPlayers = 2;
 
 class CoupGame;
 class CoupObserver;
 
-enum ActionType { kFold = 0, kCall = 1, kRaise = 2 };
+enum class CardType {
+  kNone       = -1,
+  kAssassin   = 0,
+  kAmbassador = 1,
+  kCaptain    = 2,
+  kContessa   = 3,
+  kDuke       = 4
+};
+
+enum class ActionType : Action {
+  kNone                      = -1,
+  kIncome                    = 0,
+  kForeignAid                = 1,
+  kCoup                      = 2,
+  kTax                       = 3,
+  kAssassinate               = 4,
+  kExchange                  = 5,
+  kSteal                     = 6,
+  kLoseCard1                 = 7,
+  kLoseCard2                 = 8,
+  kPassFA                    = 9,
+  kPassFABlock               = 10,
+  kPassTax                   = 11,
+  kPassExchange              = 12,
+  kPassAssassinateBlock      = 13,
+  kPassSteal                 = 14,
+  kPassStealBlock            = 15,
+  kBlockFA                   = 16,
+  kBlockAssassinate          = 17,
+  kBlockSteal                = 18,
+  kChallengeFABlock          = 19,
+  kChallengeTax              = 20,
+  kChallengeExchange         = 21,
+  kChallengeAssassinate      = 22,
+  kChallengeAssassinateBlock = 23,
+  kChallengeSteal            = 24,
+  kChallengeStealBlock       = 25,
+  kExchangeReturn12          = 26,
+  kExchangeReturn13          = 27,
+  kExchangeReturn14          = 28,
+  kExchangeReturn23          = 29,
+  kExchangeReturn24          = 30,
+  kExchangeReturn34          = 31
+};
 
 class CoupState : public State {
  public:
-  explicit CoupState(std::shared_ptr<const Game> game,
-                      bool action_mapping, bool suit_isomorphism);
+  explicit CoupState(std::shared_ptr<const Game> game);
 
   Player CurrentPlayer() const override;
   std::string ActionToString(Player player, Action move) const override;
   std::string ToString() const override;
   bool IsTerminal() const override;
+  //Rewards
   std::vector<double> Returns() const override;
   std::string InformationStateString(Player player) const override;
   std::string ObservationString(Player player) const override;
@@ -89,25 +123,10 @@ class CoupState : public State {
   // The probability of taking each possible action in a particular info state.
   std::vector<std::pair<Action, double>> ChanceOutcomes() const override;
 
-  // Additional methods
-  int round() const { return round_; }
-  int deck_size() const { return deck_size_; }
-  int public_card() const { return public_card_; }
-  int raises() const { return num_raises_; }
-  int private_card(Player player) const { return private_cards_[player]; }
   std::vector<Action> LegalActions() const override;
-
-  // Gets the private cards.
-  std::vector<int> GetPrivateCards() const { return private_cards_; }
-
-  // Sets the private cards to specific ones. Note that this function does not
-  // change the history, so any functions relying on the history will not longer
-  // work properly.
-  void SetPrivateCards(const std::vector<int>& new_private_cards);
 
   // Returns a vector of MaxGameLength containing all of the betting actions
   // taken so far. If the round has ended, the actions are kInvalidAction.
-  std::vector<int> padded_betting_sequence() const;
   std::unique_ptr<State> ResampleFromInfostate(
       int player_id, std::function<double()> rng) const override;
 
@@ -118,7 +137,7 @@ class CoupState : public State {
 
  protected:
   // The meaning of `action_id` varies:
-  // - At decision nodes, one of ActionType::{kFold, kCall, kRaise}.
+  // - At decision nodes, one of ActionType.
   // - At a chance node, indicates the card to be dealt to the player or
   // revealed publicly. The interpretation of each chance outcome depends on
   // the number of players, but always follows:
@@ -139,59 +158,22 @@ class CoupState : public State {
   friend class CoupObserver;
 
   int NextPlayer() const;
-  void ResolveWinner();
-  bool ReadyForNextRound() const;
-  void NewRound();
-  int RankHand(Player player) const;
-  void SequenceAppendMove(int move);
-  void Ante(Player player, int amount);
-  void SetPrivate(Player player, Action move);
   int NumObservableCards() const;
   int MaxBetsPerRound() const;
 
   // Fields sets to bad/invalid values. Use Game::NewInitialState().
   Player cur_player_;
 
-  int num_calls_;    // Number of calls this round (total, not per player).
-  int num_raises_;   // Number of raises made in the round (not per player).
-  int round_;        // Round number (1 or 2).
-  int stakes_;       // The current 'level' of the bet.
-  int num_winners_;  // Number of winning players.
-  int pot_;          // Number of chips in the pot.
-  int public_card_;  // The public card revealed after round 1.
-  int deck_size_;    // Number of cards remaining; not equal deck_.size()
-  int private_cards_dealt_;  // How many private cards currently dealt.
-  int remaining_players_;    // Num. players still in (not folded).
-
-  // Is this player a winner? Indexed by pid.
-  std::vector<bool> winner_;
-  // Each player's single private card. Indexed by pid.
-  std::vector<int> private_cards_;
   // Cards by value (0-6 for standard 2-player game, -1 if no longer in the
   // deck.)
   std::vector<int> deck_;
-  // How much money each player has, indexed by pid.
-  std::vector<double> money_;
-  // How much each player has contributed to the pot, indexed by pid.
-  std::vector<int> ante_;
-  // Flag for whether the player has folded, indexed by pid.
-  std::vector<bool> folded_;
-  // Sequence of actions for each round. Needed to report information state.
-  std::vector<int> round1_sequence_;
-  std::vector<int> round2_sequence_;
-  // Always regard all actions as legal, and internally map otherwise illegal
-  // actions to check/call.
-  bool action_mapping_;
-  // Players cannot distinguish between cards of different suits with the same
-  // rank.
-  bool suit_isomorphism_;
 };
 
 class CoupGame : public Game {
  public:
   explicit CoupGame(const GameParameters& params);
 
-  int NumDistinctActions() const override { return 3; }
+  int NumDistinctActions() const override { return 32; }
   std::unique_ptr<State> NewInitialState() const override;
   int MaxChanceOutcomes() const override;
   int NumPlayers() const override { return num_players_; }
@@ -200,21 +182,12 @@ class CoupGame : public Game {
   double UtilitySum() const override { return 0; }
   std::vector<int> InformationStateTensorShape() const override;
   std::vector<int> ObservationTensorShape() const override;
-  constexpr int MaxBetsPerRound() const {
-    // E.g. longest round for 4-player is 10 bets:
-    //   check, check, check, bet, call, call, raise, call, call, call
-    // = 1 bet + 1 raise + (num_players_-1)*2 calls + (num_players_-2) calls
-    return 3 * num_players_ - 2;
-  }
   int MaxGameLength() const override {
     // 2 rounds.
     return 2 * MaxBetsPerRound();
   }
   int MaxChanceNodesInHistory() const override { return 3; }
-  int NumObservableCards() const {
-    return suit_isomorphism_ ? total_cards_ / 2 : total_cards_;
-  }
-
+  //Serialize? ToString?
   std::string ActionToString(Player player, Action action) const override;
   // New Observation API
   std::shared_ptr<Observer> MakeObserver(
@@ -227,13 +200,6 @@ class CoupGame : public Game {
 
  private:
   int num_players_;  // Number of players.
-  int total_cards_;  // Number of cards total cards in the game.
-  // Always regard all actions as legal, and internally map otherwise illegal
-  // actions to check/call.
-  bool action_mapping_;
-  // Players cannot distinguish between cards of different suits with the same
-  // rank.
-  bool suit_isomorphism_;
 };
 
 // Returns policy that always folds.
