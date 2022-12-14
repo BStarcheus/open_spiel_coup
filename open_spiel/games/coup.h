@@ -12,27 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// A generalized version of a Leduc poker, a simple but non-trivial poker game
-// described in http://poker.cs.ualberta.ca/publications/UAI05.pdf .
-//
-// Taken verbatim from the linked paper above: "In Leduc hold'em, the deck
-// consists of two suits with three cards in each suit. There are two rounds.
-// In the first round a single private card is dealt to each player. In the
-// second round a single board card is revealed. There is a two-bet maximum,
-// with raise amounts of 2 and 4 in the first and second round, respectively.
-// Both players start the first round with 1 already in the pot.
-//
-// So the maximin sequence is of the form:
-// private card player 0, private card player 1, [bets], public card, [bets]
-//
+// Coup
+// 
+// 
 // Parameters:
-//     "players"           int    number of players          (default = 2)
-//     "action_mapping"    bool   regard all actions as legal and internally
-//                                map otherwise illegal actions to check/call
-//                                                           (default = false)
-//     "suit_isomorphism"  bool   player observations do not distinguish
-//                                between cards of different suits with
-//                                the same rank              (default = false)
 
 #ifndef OPEN_SPIEL_GAMES_COUP_H_
 #define OPEN_SPIEL_GAMES_COUP_H_
@@ -52,7 +35,6 @@ namespace coup {
 
 // Parameters
 
-inline constexpr int kInvalidCard = -10000;
 inline constexpr int kNumPlayers = 2;
 
 class CoupGame;
@@ -65,6 +47,12 @@ enum class CardType {
   kCaptain    = 2,
   kContessa   = 3,
   kDuke       = 4
+};
+
+enum class CardStateType {
+  kNone     = -1,
+  kFaceDown = 0,
+  kFaceUp   = 1
 };
 
 enum class ActionType : Action {
@@ -103,6 +91,22 @@ enum class ActionType : Action {
   kExchangeReturn34          = 31
 };
 
+struct CoupCard {
+  CardType value;
+  CardStateType state;
+};
+
+struct CoupPlayer {
+  // Cards in hand
+  std::vector<CoupCard> cards;
+  // Number of coins
+  int coins;
+  // Last action taken
+  ActionType last_action;
+  // Whether player has lost a challenge & it needs to be resolved
+  std::vector<bool> lost_challenge;
+};
+
 class CoupState : public State {
  public:
   explicit CoupState(std::shared_ptr<const Game> game);
@@ -111,7 +115,7 @@ class CoupState : public State {
   std::string ActionToString(Player player, Action move) const override;
   std::string ToString() const override;
   bool IsTerminal() const override;
-  //Rewards
+  std::vector<double> Rewards() const override;
   std::vector<double> Returns() const override;
   std::string InformationStateString(Player player) const override;
   std::string ObservationString(Player player) const override;
@@ -138,20 +142,7 @@ class CoupState : public State {
  protected:
   // The meaning of `action_id` varies:
   // - At decision nodes, one of ActionType.
-  // - At a chance node, indicates the card to be dealt to the player or
-  // revealed publicly. The interpretation of each chance outcome depends on
-  // the number of players, but always follows:
-  //    lowest value of first suit,
-  //    lowest value of second suit,
-  //    next lowest value of first suit,
-  //    next lowest value of second suit,
-  //             .
-  //             .
-  //             .
-  //    highest value of first suit,
-  //    highest value of second suit.
-  // So, e.g. in the two player case (6 cards): 0 = Jack1, 1 = Jack2,
-  // 2 = Queen1, ... , 5 = King2.
+  // - At a chance node, indicates the CardType to be dealt to the player
   void DoApplyAction(Action move) override;
 
  private:
@@ -161,12 +152,18 @@ class CoupState : public State {
   int NumObservableCards() const;
   int MaxBetsPerRound() const;
 
-  // Fields sets to bad/invalid values. Use Game::NewInitialState().
-  Player cur_player_;
-
-  // Cards by value (0-6 for standard 2-player game, -1 if no longer in the
-  // deck.)
+  // Counts of each card in deck. Index for each CardType (5). Count 0-3.
   std::vector<int> deck_;
+  std::vector<CoupPlayer> players_;
+
+  // "Turn" defines the overall turn of the game,
+  // which can contain several sub-moves
+  Player cur_player_turn_;
+  // "Move" defines the current decision
+  // Could be sub-move (response) in the turn (pass/block/challenge)
+  Player cur_player_move_;
+  // Whether it is the beginning of a player's turn
+  bool is_turn_begin;
 };
 
 class CoupGame : public Game {
@@ -176,17 +173,21 @@ class CoupGame : public Game {
   int NumDistinctActions() const override { return 32; }
   std::unique_ptr<State> NewInitialState() const override;
   int MaxChanceOutcomes() const override;
-  int NumPlayers() const override { return num_players_; }
-  double MinUtility() const override;
-  double MaxUtility() const override;
+  int NumPlayers() const override { return kNumPlayers; }
+  double MinUtility() const override { return -2; }
+  double MaxUtility() const override { return 2; }
   double UtilitySum() const override { return 0; }
   std::vector<int> InformationStateTensorShape() const override;
   std::vector<int> ObservationTensorShape() const override;
-  int MaxGameLength() const override {
-    // 2 rounds.
-    return 2 * MaxBetsPerRound();
-  }
-  int MaxChanceNodesInHistory() const override { return 3; }
+
+  // If neither player is playing to win, could be infinite.
+  // Unlike chess, no rules on repeated moves.
+  // Could continue to steal from eachother, or exchange with deck forever.
+  // Choosing arbitrary large value.
+  int MaxGameLength() const override { return 1000; }
+  // Given MaxGameLength, overestimating chance nodes
+  int MaxChanceNodesInHistory() const override { return 400; }
+  
   //Serialize? ToString?
   std::string ActionToString(Player player, Action action) const override;
   // New Observation API
@@ -197,9 +198,6 @@ class CoupGame : public Game {
   // Used to implement the old observation API.
   std::shared_ptr<CoupObserver> default_observer_;
   std::shared_ptr<CoupObserver> info_state_observer_;
-
- private:
-  int num_players_;  // Number of players.
 };
 
 // Returns policy that always folds.
