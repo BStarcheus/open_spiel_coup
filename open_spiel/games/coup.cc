@@ -622,25 +622,13 @@ std::vector<std::pair<Action, double>> CoupState::ChanceOutcomes() const {
   SPIEL_CHECK_TRUE(IsChanceNode());
   std::vector<std::pair<Action, double>> outcomes;
 
-  if (suit_isomorphism_) {
-    const double p = 1.0 / deck_size_;
-    // Consecutive cards in deck are viewed identically.
-    for (int card = 0; card < deck_.size() / 2; card++) {
-      if (deck_[card * 2] != kInvalidCard &&
-          deck_[card * 2 + 1] != kInvalidCard) {
-        outcomes.push_back({card, p * 2});
-      } else if (deck_[card * 2] != kInvalidCard ||
-                 deck_[card * 2 + 1] != kInvalidCard) {
-        outcomes.push_back({card, p});
-      }
-    }
-    return outcomes;
-  }
+  // Num cards in deck
+  auto deckSize = std::reduce(deck_.begin(), deck_.end());
 
-  const double p = 1.0 / deck_size_;
-  for (int card = 0; card < deck_.size(); card++) {
-    // This card is still in the deck, prob is 1/decksize.
-    if (deck_[card] != kInvalidCard) outcomes.push_back({card, p});
+  const double p;
+  for (int i = 0; i < deck_.size(); ++i) {
+    p = deck_.at(i) / deckSize;
+    outcomes.push_back({i, p});
   }
   return outcomes;
 }
@@ -691,14 +679,6 @@ CoupGame::CoupGame(const GameParameters& params)
 
 std::unique_ptr<State> CoupGame::NewInitialState() const {
   return absl::make_unique<CoupState>(shared_from_this());
-}
-
-int CoupGame::MaxChanceOutcomes() const {
-  if (suit_isomorphism_) {
-    return total_cards_ / 2;
-  } else {
-    return total_cards_;
-  }
 }
 
 std::vector<int> CoupGame::InformationStateTensorShape() const {

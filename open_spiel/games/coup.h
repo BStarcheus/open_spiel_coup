@@ -179,7 +179,7 @@ class CoupGame : public Game {
 
   int NumDistinctActions() const override { return 32; }
   std::unique_ptr<State> NewInitialState() const override;
-  int MaxChanceOutcomes() const override;
+  int MaxChanceOutcomes() const override { return 5; }
   int NumPlayers() const override { return kNumPlayers; }
   double MinUtility() const override { return -2; }
   double MaxUtility() const override { return 2; }
