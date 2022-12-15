@@ -246,14 +246,12 @@ class CoupObserver : public Observer {
   IIGObservationType iig_obs_type_;
 };
 
-CoupState::CoupState(std::shared_ptr<const Game> game, bool action_mapping,
-                       bool suit_isomorphism)
+CoupState::CoupState(std::shared_ptr<const Game> game)
     : State(game),
       cur_player_(kChancePlayerId) {
-  // Cards by value (0-6 for standard 2-player game, kInvalidCard if no longer
-  // in the deck.)
-  deck_.resize(deck_size_);
-  std::iota(deck_.begin(), deck_.end(), 0);
+  
+  // Start game. Create deck
+  // Deal cards is a chance node, so wait
 }
 
 int CoupState::CurrentPlayer() const {
@@ -385,47 +383,143 @@ void CoupState::DoApplyAction(Action move) {
   }
 }
 
+std::vector<Action> CoupState::LegalLoseCardActions() const {
+  // Show which cards the player can lose
+  std::vector<Action> legal;
+  CoupPlayer &p = players_.at(cur_player_move_);
+  if (p.cards.at(0).state == CardStateType::kFaceDown) {
+    legal.push_back(ActionType::kLoseCard1)
+  }
+  if (p.cards.at(1).state == CardStateType::kFaceDown) {
+    legal.push_back(ActionType::kLoseCard2)
+  }
+  return legal;
+}
+
 std::vector<Action> CoupState::LegalActions() const {
   if (IsTerminal()) return {};
-  std::vector<Action> movelist;
+  std::vector<Action> legal;
+
   if (IsChanceNode()) {
-    if (suit_isomorphism_) {
-      // Consecutive cards are identical under suit isomorphism.
-      for (int card = 0; card < deck_.size() / 2; card++) {
-        if (deck_[card * 2] != kInvalidCard ||
-            deck_[card * 2 + 1] != kInvalidCard) {
-          movelist.push_back(card);
-        }
-      }
+    // All chance nodes are the action of drawing a card
+    // 5 types of cards
+    legal = {0, 1, 2, 3, 4};
+    return legal;
+  }
+  
+  // else Decision node
+  CoupPlayer &cp = players_.at(cur_player_move_);
+  CoupPlayer &op = players_.at(opp_player_);
+  if (is_turn_begin_) {
+    if (cp.coins >= 10) {
+      legal.push_back(ActionType::kCoup);
+      return legal;
+    }
+
+    legal.push_back(ActionType::kIncome);
+    legal.push_back(ActionType::kForeignAid);
+    if (cp.coins >= 7) legal.push_back(ActionType::kCoup);
+    legal.push_back(ActionType::kTax);
+    if (cp.coins >= 3) legal.push_back(ActionType::kAssassinate);
+    legal.push_back(ActionType::kExchange);
+    if (op.coins > 0) legal.push_back(ActionType::kSteal);
+    return legal;
+
+  } else if (cp.lost_challenge) {
+    // Player lost challenge and needs to lose a card
+    return LegalLoseCardActions();
+
+  } else if (cur_player_move_ != cur_player_turn_) {
+    // opponent's turn, so cur_player_move_ can
+    // choose to block or challenge for certain actions
+    if (op.last_action == ActionType::kForeignAid) {
+      legal = {ActionType::kPassFA, 
+               ActionType::kBlockFA};
+      return legal;
+    } else if (op.last_action == ActionType::kTax) {
+      legal = {ActionType::kPassTax, 
+               ActionType::kChallengeTax};
+      return legal;
+    } else if (op.last_action == ActionType::kExchange) {
+      legal = {ActionType::kPassExchange,
+               ActionType::kChallengeExchange};
+      return legal;
+    } else if (op.last_action == ActionType::kSteal) {
+      legal = {ActionType::kPassSteal, 
+               ActionType::kBlockSteal,
+               ActionType::kChallengeSteal};
+      return legal;
+    } else if (op.last_action == ActionType::kAssassinate) {
+      legal = LegalLoseCardActions();
+      legal.push_back(ActionType::kBlockAssassinate);
+      legal.push_back(ActionType::kChallengeAssassinate);
+      return legal;
+    } else if (op.last_action == ActionType::kCoup) {
+      legal = LegalLoseCardActions();
+      return legal;
     } else {
-      for (int card = 0; card < deck_.size(); card++) {
-        if (deck_[card] != kInvalidCard) movelist.push_back(card);
+      SpielFatalError("Error in LegalActions(): Invalid action progression");
+    }
+
+  } else if (cp.last_action == ActionType::kExchange) {
+    // Opponent has passed, so cp can continue with exchange
+    if (cp.cards.size() < 4) {
+      SpielFatalError("Error in LegalActions(): Player mid-exchange should have 4 cards");
+    }
+
+    // Find index of single face up card, if any
+    int faceUpInd = -1;
+    for (int i = 0; i < cp.cards.size(); ++i) {
+      if (cp.cards.at(i).state == CardStateType::kFaceUp) {
+        faceUpInd = i;
+        break;
       }
     }
-    return movelist;
+
+    if (faceUpInd == -1) {
+      legal = {ActionType::kExchangeReturn12,
+               ActionType::kExchangeReturn13,
+               ActionType::kExchangeReturn14,
+               ActionType::kExchangeReturn23,
+               ActionType::kExchangeReturn24,
+               ActionType::kExchangeReturn34};
+    } else if (faceUpInd == 0) {
+      legal = {ActionType::kExchangeReturn23,
+               ActionType::kExchangeReturn24,
+               ActionType::kExchangeReturn34};
+    } else if (faceUpInd == 1) {
+      legal = {ActionType::kExchangeReturn13,
+               ActionType::kExchangeReturn14,
+               ActionType::kExchangeReturn34};
+    } else if (faceUpInd == 2) {
+      legal = {ActionType::kExchangeReturn12,
+               ActionType::kExchangeReturn14,
+               ActionType::kExchangeReturn24};
+    } else if (faceUpInd == 3) {
+      legal = {ActionType::kExchangeReturn12,
+               ActionType::kExchangeReturn13,
+               ActionType::kExchangeReturn23};
+    }
+    return legal;
+
+  } else if (op.last_action == ActionType::kBlockFA) {
+    legal = {ActionType::kPassFABlock,
+             ActionType::kChallengeFABlock};
+    return legal;
+
+  } else if (cp.last_action == ActionType::kBlockAssassinate) {
+    legal = {ActionType::kPassAssassinateBlock,
+             ActionType::kChallengeAssassinateBlock};
+    return legal;
+
+  } else if (cp.last_action == ActionType::kBlockSteal) {
+    legal = {ActionType::kPassStealBlock,
+             ActionType::kChallengeStealBlock};
+    return legal;
+
+  } else {
+    SpielFatalError("Error in LegalActions(): Invalid action progression");
   }
-
-  if (action_mapping_) {
-    // All actions are regarded as legal
-    movelist.push_back(ActionType::kFold);
-    movelist.push_back(ActionType::kCall);
-    movelist.push_back(ActionType::kRaise);
-    return movelist;
-  }
-
-  // Can't just randomly fold; only allow fold when under pressure.
-  if (stakes_ > ante_[cur_player_]) {
-    movelist.push_back(ActionType::kFold);
-  }
-
-  // Can always call/check
-  movelist.push_back(ActionType::kCall);
-
-  if (num_raises_ < 2) {
-    movelist.push_back(ActionType::kRaise);
-  }
-
-  return movelist;
 }
 
 std::string CoupState::ActionToString(Player player, Action move) const {
@@ -463,7 +557,21 @@ std::string CoupState::ToString() const {
 }
 
 bool CoupState::IsTerminal() const {
-  return remaining_players_ == 1 || (round_ == 2 && ReadyForNextRound());
+  int numPlayersAlive = 0;
+  for (auto &p: players_) {
+    for (auto &c: p.cards) {
+      if (c.state == CardStateType::kFaceDown) {
+        numPlayersAlive += 1; 
+        break;
+      }
+    }
+  }
+  if (numPlayersAlive > 1) return false;
+  else return true;
+}
+
+std::vector<double> Rewards() const {
+
 }
 
 std::vector<double> CoupState::Returns() const {
@@ -537,26 +645,17 @@ std::vector<std::pair<Action, double>> CoupState::ChanceOutcomes() const {
   return outcomes;
 }
 
-int CoupState::NextPlayer() const {
-  // If we are on a chance node, it is the first player to play
-  int current_real_player;
-  if (cur_player_ == kChancePlayerId) {
-    current_real_player = -1;
-  } else {
-    current_real_player = cur_player_;
-  }
-  // Go to the next player who's still in.
-  for (int i = 1; i < num_players_; ++i) {
-    Player player = (current_real_player + i) % num_players_;
+void CoupState::NextPlayerTurn() {
+  cur_player_turn_ = 1 - cur_player_turn_;
+  // Player always has first move on their turn
+  cur_player_move_ = cur_player_turn_;
+  ++turn_number_;
+  is_turn_begin_ = true;
+}
 
-    SPIEL_CHECK_TRUE(player >= 0);
-    SPIEL_CHECK_TRUE(player < num_players_);
-    if (!folded_[player]) {
-      return player;
-    }
-  }
-
-  SpielFatalError("Error in CoupState::NextPlayer(), should not get here.");
+void CoupState::NextPlayerMove() {
+  cur_player_move_ = 1 - cur_player_move_;
+  is_turn_begin_ = false;
 }
 
 std::unique_ptr<State> CoupState::ResampleFromInfostate(
@@ -585,21 +684,13 @@ std::unique_ptr<State> CoupState::ResampleFromInfostate(
 }
 
 CoupGame::CoupGame(const GameParameters& params)
-    : Game(kGameType, params),
-      num_players_(ParameterValue<int>("players")),
-      total_cards_((num_players_ + 1) * kNumSuits),
-      action_mapping_(ParameterValue<bool>("action_mapping")),
-      suit_isomorphism_(ParameterValue<bool>("suit_isomorphism")) {
-  SPIEL_CHECK_GE(num_players_, kGameType.min_num_players);
-  SPIEL_CHECK_LE(num_players_, kGameType.max_num_players);
+    : Game(kGameType, params) {
   default_observer_ = std::make_shared<CoupObserver>(kDefaultObsType);
   info_state_observer_ = std::make_shared<CoupObserver>(kInfoStateObsType);
 }
 
 std::unique_ptr<State> CoupGame::NewInitialState() const {
-  return absl::make_unique<CoupState>(shared_from_this(),
-                                       /*action_mapping=*/action_mapping_,
-                                       /*suit_isomorphism=*/suit_isomorphism_);
+  return absl::make_unique<CoupState>(shared_from_this());
 }
 
 int CoupGame::MaxChanceOutcomes() const {
@@ -630,14 +721,6 @@ std::vector<int> CoupGame::ObservationTensorShape() const {
   } else {
     return {(num_players_) + (total_cards_ * 2) + (num_players_)};
   }
-}
-
-double CoupGame::MaxUtility() const {
-  return 2;
-}
-
-double CoupGame::MinUtility() const {
-  return -2;
 }
 
 std::shared_ptr<Observer> CoupGame::MakeObserver(

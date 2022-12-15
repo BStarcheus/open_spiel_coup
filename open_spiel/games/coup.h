@@ -148,7 +148,10 @@ class CoupState : public State {
  private:
   friend class CoupObserver;
 
-  int NextPlayer() const;
+  std::vector<Action> LegalLoseCardActions() const;
+
+  void NextPlayerTurn();
+  void NextPlayerMove();
   int NumObservableCards() const;
   int MaxBetsPerRound() const;
 
@@ -162,8 +165,12 @@ class CoupState : public State {
   // "Move" defines the current decision
   // Could be sub-move (response) in the turn (pass/block/challenge)
   Player cur_player_move_;
+  // Opponent of cur_player_move_
+  Player opp_player_;
   // Whether it is the beginning of a player's turn
-  bool is_turn_begin;
+  bool is_turn_begin_;
+  // Track turns in addition to move_number_
+  int turn_number_;
 };
 
 class CoupGame : public Game {
