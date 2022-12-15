@@ -258,7 +258,7 @@ int CoupState::CurrentPlayer() const {
   if (IsTerminal()) {
     return kTerminalPlayerId;
   } else {
-    return cur_player_;
+    return cur_player_move_;
   }
 }
 
