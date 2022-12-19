@@ -158,6 +158,10 @@ class CoupState : public State {
   std::vector<int> deck_;
   std::vector<CoupPlayer> players_;
 
+  // Queue of which player to deal cards to.
+  // Game should stay in chance nodes until queue is empty.
+  std::vector<Player> deal_card_to_;
+
   // "Turn" defines the overall turn of the game,
   // which can contain several sub-moves
   Player cur_player_turn_;

@@ -262,7 +262,7 @@ CoupState::CoupState(std::shared_ptr<const Game> game)
   // Deal cards is a chance node, so wait
 }
 
-int CoupState::CurrentPlayer() const {
+Player CoupState::CurrentPlayer() const {
   if (IsTerminal()) {
     return kTerminalPlayerId;
   } else {
@@ -278,6 +278,7 @@ void CoupState::DoApplyAction(Action move) {
     SPIEL_CHECK_GE(move, 0);
     SPIEL_CHECK_LT(move, deck_.size());
     SPIEL_CHECK_GT(deck_.at(move), 0);
+    SPIEL_CHECK_GT(deal_card_to_.size(), 0);
     
     // TODO Get which player
 
@@ -307,7 +308,7 @@ void CoupState::DoApplyAction(Action move) {
       }
 
     } else if (move == ActionType::kCoup) {
-      if (cp.coins < 7) SpielFatalError("Error: Cannot Coup with < 7 coins");
+      SPIEL_CHECK_GE(cp.coins, 7);
 
       cp.last_action = move;
       cp.coins -= 7;
@@ -326,7 +327,7 @@ void CoupState::DoApplyAction(Action move) {
       }
 
     } else if (move == ActionType::kAssassinate) {
-      if (cp.coins < 3) SpielFatalError("Error: Cannot Assassinate with < 3 coins");
+      SPIEL_CHECK_GE(cp.coins, 3);
 
       cp.last_action = move;
       // Pay the coins whether or not the action is blocked/challenged
@@ -337,7 +338,7 @@ void CoupState::DoApplyAction(Action move) {
       // TODO
 
     } else if (move == ActionType::kSteal) {
-      if (op.coins < 1) SpielFatalError("Error: Cannot Steal from opponent with no coins");
+      SPIEL_CHECK_GE(op.coins, 1);
 
       if (is_turn_begin_) {
         // Before allowing the action to take effect,
@@ -355,10 +356,7 @@ void CoupState::DoApplyAction(Action move) {
     } else if (move == ActionType::kLoseCard1 ||
                move == ActionType::kLoseCard2) {
       int cardToLose = move - ActionType::kLoseCard1;
-
-      if (cp.cards.at(cardToLose).state == CardStateType::kFaceUp) {
-        SpielFatalError("Error: Cannot lose a card that is already face up");
-      }
+      SPIEL_CHECK_EQ(cp.cards.at(cardToLose).state, CardStateType::kFaceDown);
 
       cp.cards.at(cardToLose).state = CardStateType::kFaceUp;
       cp.lost_challenge = false;
