@@ -105,6 +105,7 @@ struct CoupPlayer {
   ActionType last_action;
   // Whether player has lost a challenge & it needs to be resolved
   bool lost_challenge;
+  bool HasFaceDownCard(CardType card);
 };
 
 class CoupState : public State {

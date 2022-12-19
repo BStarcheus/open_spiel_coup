@@ -49,9 +49,7 @@ const GameType kGameType{/*short_name=*/"coup",
                          /*provides_observation_string=*/true,
                          /*provides_observation_tensor=*/true,
                          /*parameter_specification=*/
-                         {{"players", GameParameter(kNumPlayers)},
-                          {"action_mapping", GameParameter(false)},
-                          {"suit_isomorphism", GameParameter(false)}}};
+                         {}};
 
 std::shared_ptr<const Game> Factory(const GameParameters& params) {
   return std::shared_ptr<const Game>(new CoupGame(params));
@@ -246,6 +244,16 @@ class CoupObserver : public Observer {
   IIGObservationType iig_obs_type_;
 };
 
+bool CoupPlayer::HasFaceDownCard(CardType card) {
+  for (auto &c: cards) {
+    if (c.value == card &&
+        c.state == CardStateType::kFaceDown) {
+      return true;
+    }
+  }
+  return false;
+}
+
 CoupState::CoupState(std::shared_ptr<const Game> game)
     : State(game),
       cur_player_(kChancePlayerId) {
@@ -269,116 +277,186 @@ void CoupState::DoApplyAction(Action move) {
   if (IsChanceNode()) {
     SPIEL_CHECK_GE(move, 0);
     SPIEL_CHECK_LT(move, deck_.size());
-    if (suit_isomorphism_) {
-      // One of the two identical cards must be left in the deck.
-      SPIEL_CHECK_TRUE(deck_[move * 2] != kInvalidCard ||
-                       deck_[move * 2 + 1] != kInvalidCard);
-    } else {
-      SPIEL_CHECK_NE(deck_[move], kInvalidCard);
-    }
+    SPIEL_CHECK_GT(deck_.at(move), 0);
+    
+    // TODO Get which player
 
-    if (private_cards_dealt_ < num_players_) {
-      SetPrivate(private_cards_dealt_, move);
-    } else {
-      // Round 2: A single public card.
-      if (suit_isomorphism_) {
-        public_card_ = move;
-        if (deck_[move * 2] != kInvalidCard) {
-          deck_[move * 2] = kInvalidCard;
-        } else if (deck_[move * 2 + 1] != kInvalidCard) {
-          deck_[move * 2 + 1] = kInvalidCard;
-        } else {
-          SpielFatalError("Suit isomorphism error.");
-        }
-        deck_size_--;
-      } else {
-        public_card_ = deck_[move];
-        deck_[move] = kInvalidCard;
-        deck_size_--;
-      }
+    deck_.at(move) = deck_.at(move) - 1;
 
-      // We have finished the public card, let's bet!
-      cur_player_ = NextPlayer();
-    }
+    // TODO Add to player's hand
+
   } else {
-    // Player node.
-    if (action_mapping_) {
-      // Map otherwise illegal actions to kCall.
-      if (move == ActionType::kFold) {
-        if (stakes_ <= ante_[cur_player_]) {
-          move = ActionType::kCall;
+    CoupPlayer &cp = players_.at(cur_player_move_);
+    CoupPlayer &op = players_.at(opp_player_);
+
+    if (move == ActionType::kIncome) {
+      cp.last_action = move;
+      cp.coins += 1;
+      NextPlayerTurn();
+
+    } else if (move == ActionType::kForeignAid) {
+      if (is_turn_begin_) {
+        // Before allowing the action to take effect,
+        // the opponent must not block it
+        cp.last_action = move;
+        NextPlayerMove();
+      } else {
+        // PASS: Opponent did not block, so complete the action
+        cp.coins += 2;
+        NextPlayerTurn();
+      }
+
+    } else if (move == ActionType::kCoup) {
+      if (cp.coins < 7) SpielFatalError("Error: Cannot Coup with < 7 coins");
+
+      cp.last_action = move;
+      cp.coins -= 7;
+      NextPlayerMove();
+
+    } else if (move == ActionType::kTax) {
+      if (is_turn_begin_) {
+        // Before allowing the action to take effect,
+        // the opponent must not challenge it
+        cp.last_action = move;
+        NextPlayerMove();
+      } else {
+        // PASS: Opponent did not challenge, so complete the action
+        cp.coins += 3;
+        NextPlayerTurn();
+      }
+
+    } else if (move == ActionType::kAssassinate) {
+      if (cp.coins < 3) SpielFatalError("Error: Cannot Assassinate with < 3 coins");
+
+      cp.last_action = move;
+      // Pay the coins whether or not the action is blocked/challenged
+      cp.coins -= 3;
+      NextPlayerMove();
+
+    } else if (move == ActionType::kExchange) {
+      // TODO
+
+    } else if (move == ActionType::kSteal) {
+      if (op.coins < 1) SpielFatalError("Error: Cannot Steal from opponent with no coins");
+
+      if (is_turn_begin_) {
+        // Before allowing the action to take effect,
+        // the opponent must not block/challenge
+        cp.last_action = move;
+        NextPlayerMove();
+      } else {
+        // PASS: Opponent did not block/challenge, so complete the action
+        int numSteal = (op.coins > 1) ? 2 : 1;
+        cp.coins += numSteal;
+        op.coins -= numSteal;
+        NextPlayerTurn();
+      }
+
+    } else if (move == ActionType::kLoseCard1 ||
+               move == ActionType::kLoseCard2) {
+      int cardToLose = move - ActionType::kLoseCard1;
+
+      if (cp.cards.at(cardToLose).state == CardStateType::kFaceUp) {
+        SpielFatalError("Error: Cannot lose a card that is already face up");
+      }
+
+      cp.cards.at(cardToLose).state = CardStateType::kFaceUp;
+      cp.lost_challenge = false;
+      // TODO sort cards
+      NextPlayerTurn();
+
+    } else if (move >= ActionType::kPassFA &&
+               move <= ActionType::kPassStealBlock) {
+      cp.last_action = move;
+      Action act;
+
+      if (move == ActionType::kPassFABlock ||
+          move == ActionType::kPassAssassinateBlock ||
+          move == ActionType::kPassStealBlock) {
+        // Block succeeds. Nothing to do.
+        NextPlayerTurn();
+      } else {
+        if (move == ActionType::kPassFA) {
+          act = ActionType::kForeignAid;
+        } else if (move == ActionType::kPassTax) {
+          act = ActionType::kTax;
+        } else if (move == ActionType::kPassExchange) {
+          act = ActionType::kExchange;
+        } else if (move == ActionType::kPassSteal) {
+          act = ActionType::kSteal;
         }
-      } else if (move == ActionType::kRaise) {
-        if (num_raises_ >= 2) {
-          move = ActionType::kCall;
-        }
+        NextPlayerMove();
+        DoApplyAction(act);
       }
-    }
 
-    if (move == ActionType::kFold) {
-      SPIEL_CHECK_NE(cur_player_, kChancePlayerId);
-      SequenceAppendMove(ActionType::kFold);
+    } else if (move >= ActionType::kBlockFA &&
+               move <= ActionType::kBlockSteal) {
+      cp.last_action = move;
+      NextPlayerMove();
 
-      // Player is now out.
-      folded_[cur_player_] = true;
-      remaining_players_--;
+    } else if (move == ActionType::kChallengeFABlock) {
+      cp.last_action = move;
+      if (op.HasFaceDownCard(CardType::kDuke)) {
 
-      if (IsTerminal()) {
-        ResolveWinner();
-      } else if (ReadyForNextRound()) {
-        NewRound();
       } else {
-        cur_player_ = NextPlayer();
+
       }
-    } else if (move == ActionType::kCall) {
-      SPIEL_CHECK_NE(cur_player_, kChancePlayerId);
 
-      // Current player puts in an amount of money equal to the current level
-      // (stakes) minus what they have contributed to level their contribution
-      // off. Note: this action also acts as a 'check' where the stakes are
-      // equal to each player's ante.
-      SPIEL_CHECK_GE(stakes_, ante_[cur_player_]);
-      int amount = stakes_ - ante_[cur_player_];
-      Ante(cur_player_, amount);
-      num_calls_++;
-      SequenceAppendMove(ActionType::kCall);
+    } else if (move == ActionType::kChallengeTax) {
+      cp.last_action = move;
+      if (op.HasFaceDownCard(CardType::kDuke)) {
 
-      if (IsTerminal()) {
-        ResolveWinner();
-      } else if (ReadyForNextRound()) {
-        NewRound();
       } else {
-        cur_player_ = NextPlayer();
-      }
-    } else if (move == ActionType::kRaise) {
-      SPIEL_CHECK_NE(cur_player_, kChancePlayerId);
 
-      // This player matches the current stakes and then brings the stakes up.
-      SPIEL_CHECK_LT(num_raises_, kMaxRaises);
-      int call_amount = stakes_ - ante_[cur_player_];
-
-      // First, match the current stakes if necessary
-      SPIEL_CHECK_GE(call_amount, 0);
-      if (call_amount > 0) {
-        Ante(cur_player_, call_amount);
       }
 
-      // Now, raise the stakes.
-      int raise_amount = (round_ == 1 ? kFirstRaiseAmount : kSecondRaiseAmount);
-      stakes_ += raise_amount;
-      Ante(cur_player_, raise_amount);
-      num_raises_++;
-      num_calls_ = 0;
-      SequenceAppendMove(ActionType::kRaise);
+    } else if (move == ActionType::kChallengeExchange) {
+      cp.last_action = move;
+      if (op.HasFaceDownCard(CardType::kAmbassador)) {
 
-      if (IsTerminal()) {
-        ResolveWinner();
       } else {
-        cur_player_ = NextPlayer();
+
       }
+
+    } else if (move == ActionType::kChallengeAssassinate) {
+      cp.last_action = move;
+      if (op.HasFaceDownCard(CardType::kAssassin)) {
+
+      } else {
+
+      }
+
+    } else if (move == ActionType::kChallengeAssassinateBlock) {
+      cp.last_action = move;
+      if (op.HasFaceDownCard(CardType::kContessa)) {
+
+      } else {
+
+      }
+
+    } else if (move == ActionType::kChallengeSteal) {
+      cp.last_action = move;
+      if (op.HasFaceDownCard(CardType::kCaptain)) {
+
+      } else {
+
+      }
+
+    } else if (move == ActionType::kChallengeStealBlock) {
+      cp.last_action = move;
+      if (op.HasFaceDownCard(CardType::kCaptain)) {
+
+      } else if (op.HasFaceDownCard(CardType::kAmbassador)) {
+
+      } else {
+
+      }
+
+    } else if () { // exch ret TODO
+
+
     } else {
-      SpielFatalError(absl::StrCat("Move ", move, " is invalid. ChanceNode?",
-                                   IsChanceNode()));
+      SpielFatalError("Invalid player action");
     }
   }
 }
