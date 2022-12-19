@@ -104,7 +104,7 @@ struct CoupPlayer {
   // Last action taken
   ActionType last_action;
   // Whether player has lost a challenge & it needs to be resolved
-  std::vector<bool> lost_challenge;
+  bool lost_challenge;
 };
 
 class CoupState : public State {
@@ -152,8 +152,6 @@ class CoupState : public State {
 
   void NextPlayerTurn();
   void NextPlayerMove();
-  int NumObservableCards() const;
-  int MaxBetsPerRound() const;
 
   // Counts of each card in deck. Index for each CardType (5). Count 0-3.
   std::vector<int> deck_;
