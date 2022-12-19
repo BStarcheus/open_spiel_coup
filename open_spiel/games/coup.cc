@@ -270,8 +270,7 @@ Player CoupState::CurrentPlayer() const {
   }
 }
 
-// In a chance node, `move` should be the card to deal to the current
-// underlying player.
+// In a chance node, `move` should be the card to deal to the player
 // On a player node, it should be ActionType
 void CoupState::DoApplyAction(Action move) {
   if (IsChanceNode()) {
@@ -279,12 +278,18 @@ void CoupState::DoApplyAction(Action move) {
     SPIEL_CHECK_LT(move, deck_.size());
     SPIEL_CHECK_GT(deck_.at(move), 0);
     SPIEL_CHECK_GT(deal_card_to_.size(), 0);
-    
-    // TODO Get which player
 
-    deck_.at(move) = deck_.at(move) - 1;
+    // All chance nodes have same action
+    // Player gets random card from deck
 
-    // TODO Add to player's hand
+    Player dealToPlayer = deal_card_to_.pop();
+    deck_.at(move) -= 1;
+    players_.at(dealToPlayer).cards.append(
+        CoupCard(move, CardStateType::kFaceDown));
+    // TODO sort cards in hand
+
+    // TODO if (deal_card_to_.size() == 0) {
+    // set to next real player
 
   } else {
     CoupPlayer &cp = players_.at(cur_player_move_);

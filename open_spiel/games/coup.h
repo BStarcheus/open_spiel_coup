@@ -25,6 +25,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <queue>
 
 #include "open_spiel/observer.h"
 #include "open_spiel/policy.h"
@@ -160,7 +161,7 @@ class CoupState : public State {
 
   // Queue of which player to deal cards to.
   // Game should stay in chance nodes until queue is empty.
-  std::vector<Player> deal_card_to_;
+  std::queue<Player> deal_card_to_;
 
   // "Turn" defines the overall turn of the game,
   // which can contain several sub-moves
