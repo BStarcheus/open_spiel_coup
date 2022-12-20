@@ -95,6 +95,11 @@ enum class ActionType : Action {
 struct CoupCard {
   CardType value;
   CardStateType state;
+
+  bool operator < (const CoupCard &obj) const {
+    return (value < obj.value ||
+              (value == obj.value && state < obj.state));
+  }
 };
 
 struct CoupPlayer {
