@@ -112,6 +112,8 @@ struct CoupPlayer {
   // Whether player has lost a challenge & it needs to be resolved
   bool lost_challenge;
   bool HasFaceDownCard(CardType card);
+  // Sort cards to reduce state space
+  void SortCards();
 };
 
 class CoupState : public State {

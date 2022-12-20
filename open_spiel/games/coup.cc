@@ -254,12 +254,43 @@ bool CoupPlayer::HasFaceDownCard(CardType card) {
   return false;
 }
 
+void CoupPlayer::SortCards() {
+  std::sort(cards.begin(), cards.end());
+}
+
 CoupState::CoupState(std::shared_ptr<const Game> game)
     : State(game),
-      cur_player_(kChancePlayerId) {
-  
-  // Start game. Create deck
+      deck_(5, 3),
+      cur_player_turn_(0),
+      cur_player_move_(kChancePlayerId),
+      opp_player_(1),
+      is_turn_begin_(true),
+      turn_number_(0) {
+  // Start game
   // Deal cards is a chance node, so wait
+
+  // Create 2 players
+  players_ = {
+    {
+      {},//cards
+      1,//coins
+      ActionType::kNone,//last_action
+      false//lost_challenge
+    },
+    {
+      {},//cards
+      2,//coins
+      ActionType::kNone,//last_action
+      false//lost_challenge
+    }
+  };
+
+  // Queue players to deal cards to
+  // These chance nodes will be hit before it is player 1's turn
+  deal_card_to_.push(0);
+  deal_card_to_.push(1);
+  deal_card_to_.push(0);
+  deal_card_to_.push(1);
 }
 
 Player CoupState::CurrentPlayer() const {
