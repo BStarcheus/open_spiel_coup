@@ -159,6 +159,10 @@ class CoupState : public State {
 
   std::vector<Action> LegalLoseCardActions() const;
 
+  // Helper used when cur_player_move_ challenged opp and lost,
+  // so opp needs a new card
+  void ChallengeFailReplaceCard(CardType card);
+
   void NextPlayerTurn();
   void NextPlayerMove();
 
@@ -182,6 +186,13 @@ class CoupState : public State {
   bool is_turn_begin_;
   // Track turns in addition to move_number_
   int turn_number_;
+  // Whether currently at a chance node.
+  // Exists for Challenge Fails:
+  // cp challenges, loses, must replace op card (chance node),
+  // but then return to cp move so they can lose a card.
+  // cur_player_move_ must have the player to go back to,
+  // so need to track chance here instead.
+  bool is_chance_;
 };
 
 class CoupGame : public Game {

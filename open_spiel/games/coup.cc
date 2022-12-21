@@ -262,12 +262,13 @@ CoupState::CoupState(std::shared_ptr<const Game> game)
     : State(game),
       deck_(5, 3),
       cur_player_turn_(0),
-      cur_player_move_(kChancePlayerId),
+      cur_player_move_(0),
       opp_player_(1),
       is_turn_begin_(true),
-      turn_number_(0) {
+      turn_number_(0),
+      is_chance_(true) {
   // Start game
-  // Deal cards is a chance node, so wait
+  // Chance node first to deal cards
 
   // Create 2 players
   players_ = {
@@ -286,7 +287,7 @@ CoupState::CoupState(std::shared_ptr<const Game> game)
   };
 
   // Queue players to deal cards to
-  // These chance nodes will be hit before it is player 1's turn
+  // These chance nodes will be hit before it is P1's turn
   deal_card_to_.push(0);
   deal_card_to_.push(1);
   deal_card_to_.push(0);
@@ -296,9 +297,31 @@ CoupState::CoupState(std::shared_ptr<const Game> game)
 Player CoupState::CurrentPlayer() const {
   if (IsTerminal()) {
     return kTerminalPlayerId;
+  } else if(is_chance_) {
+    return kChancePlayerId;
   } else {
     return cur_player_move_;
   }
+}
+
+void CoupState::ChallengeFailReplaceCard(CardType card) {
+  CoupPlayer &op = players_.at(opp_player_);
+  // Find the face down card to replace
+  for (int i = 0; i < op.cards.size(); ++i) {
+    CoupCard &c = op.cards.at(i);
+    if (c.value == card &&
+        c.state == CardStateType::kFaceDown) {
+      // Remove from hand and put back in deck
+      deck_.at(card) += 1;
+      op.cards.erase(op.cards.begin()+i);
+      // Chance player will deal a random card
+      // to replace the card that was just revealed
+      deal_card_to_.push(opp_player_);
+      is_chance_ = true;
+      return;
+    }
+  }
+  SpielFatalError("Error: Tried to replace card which was not found in hand");
 }
 
 // In a chance node, `move` should be the card to deal to the player
@@ -315,12 +338,20 @@ void CoupState::DoApplyAction(Action move) {
 
     Player dealToPlayer = deal_card_to_.pop();
     deck_.at(move) -= 1;
-    players_.at(dealToPlayer).cards.append(
+    players_.at(dealToPlayer).cards.push_back(
         CoupCard(move, CardStateType::kFaceDown));
-    // TODO sort cards in hand
+    players_.at(dealToPlayer).SortCards();
 
-    // TODO if (deal_card_to_.size() == 0) {
-    // set to next real player
+
+    // 3 situations when chance node hit:
+    // - Beginning of game dealing cards
+    // - ChallengeFailReplaceCard
+    // - Exchange (draw 2 cards from deck)
+    //
+    // In all cases, it's not the end of the turn,
+    // and cur_player_move_ has next move,
+    // so don't increment player. Just leave chance node.
+    if (deal_card_to_.size() == 0) is_chance_ = false;
 
   } else {
     CoupPlayer &cp = players_.at(cur_player_move_);
@@ -396,7 +427,7 @@ void CoupState::DoApplyAction(Action move) {
 
       cp.cards.at(cardToLose).state = CardStateType::kFaceUp;
       cp.lost_challenge = false;
-      // TODO sort cards
+      cp.SortCards();
       NextPlayerTurn();
 
     } else if (move >= ActionType::kPassFA &&
@@ -420,6 +451,7 @@ void CoupState::DoApplyAction(Action move) {
           act = ActionType::kSteal;
         }
         NextPlayerMove();
+        // Pass, so complete their action
         DoApplyAction(act);
       }
 
@@ -431,17 +463,29 @@ void CoupState::DoApplyAction(Action move) {
     } else if (move == ActionType::kChallengeFABlock) {
       cp.last_action = move;
       if (op.HasFaceDownCard(CardType::kDuke)) {
-
+        cp.lost_challenge = true;
+        ChallengeFailReplaceCard(CardType::kDuke);
+        // cp must lose a card. Still their move
       } else {
-
+        op.lost_challenge = true;
+        // Block failed, so complete the action
+        cp.coins += 2;
+        // opp must lose a card
+        NextPlayerMove();
       }
 
     } else if (move == ActionType::kChallengeTax) {
       cp.last_action = move;
       if (op.HasFaceDownCard(CardType::kDuke)) {
-
+        cp.lost_challenge = true;
+        ChallengeFailReplaceCard(CardType::kDuke);
+        // Complete the action
+        op.coins += 3;
+        // cp must lose a card. Still their move
       } else {
-
+        op.lost_challenge = true;
+        // opp must lose a card
+        NextPlayerMove();
       }
 
     } else if (move == ActionType::kChallengeExchange) {
@@ -455,35 +499,68 @@ void CoupState::DoApplyAction(Action move) {
     } else if (move == ActionType::kChallengeAssassinate) {
       cp.last_action = move;
       if (op.HasFaceDownCard(CardType::kAssassin)) {
-
+        // cp loses game. Lose 1 for assassination
+        // and 1 for losing challenge
+        cp.cards.at(0).state = CardStateType::kFaceUp;
+        cp.cards.at(1).state = CardStateType::kFaceUp;
       } else {
-
+        op.lost_challenge = true;
+        // Coins spent are returned in this one case
+        op.coins += 3;
+        // opp must lose a card
+        NextPlayerMove();
       }
 
     } else if (move == ActionType::kChallengeAssassinateBlock) {
       cp.last_action = move;
       if (op.HasFaceDownCard(CardType::kContessa)) {
-
+        cp.lost_challenge = true;
+        ChallengeFailReplaceCard(CardType::kContessa);
+        // cp must lose a card. Still their move
       } else {
-
+        // op loses game. Lose 1 for assassination
+        // and 1 for losing challenge
+        op.cards.at(0).state = CardStateType::kFaceUp;
+        op.cards.at(1).state = CardStateType::kFaceUp;
       }
 
     } else if (move == ActionType::kChallengeSteal) {
       cp.last_action = move;
       if (op.HasFaceDownCard(CardType::kCaptain)) {
+        cp.lost_challenge = true;
+        ChallengeFailReplaceCard(CardType::kCaptain);
 
+        // Complete the action
+        int numSteal = (cp.coins > 1) ? 2 : 1;
+        op.coins += numSteal;
+        cp.coins -= numSteal;
+
+        // cp must lose a card. Still their move
       } else {
-
+        op.lost_challenge = true;
+        // opp must lose a card
+        NextPlayerMove();
       }
 
     } else if (move == ActionType::kChallengeStealBlock) {
       cp.last_action = move;
       if (op.HasFaceDownCard(CardType::kCaptain)) {
-
+        cp.lost_challenge = true;
+        ChallengeFailReplaceCard(CardType::kCaptain);
+        // cp must lose a card. Still their move
       } else if (op.HasFaceDownCard(CardType::kAmbassador)) {
-
+        cp.lost_challenge = true;
+        ChallengeFailReplaceCard(CardType::kAmbassador);
+        // cp must lose a card. Still their move
       } else {
+        op.lost_challenge = true;
 
+        // Block failed. Complete the steal
+        int numSteal = (op.coins > 1) ? 2 : 1;
+        cp.coins += numSteal;
+        op.coins -= numSteal;
+        // opp must lose a card
+        NextPlayerMove();
       }
 
     } else if () { // exch ret TODO
@@ -749,12 +826,14 @@ void CoupState::NextPlayerTurn() {
   cur_player_turn_ = 1 - cur_player_turn_;
   // Player always has first move on their turn
   cur_player_move_ = cur_player_turn_;
+  opp_player_ = 1 - cur_player_move_;
   ++turn_number_;
   is_turn_begin_ = true;
 }
 
 void CoupState::NextPlayerMove() {
   cur_player_move_ = 1 - cur_player_move_;
+  opp_player_ = 1 - cur_player_move_;
   is_turn_begin_ = false;
 }
 
