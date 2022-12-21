@@ -342,7 +342,6 @@ void CoupState::DoApplyAction(Action move) {
         CoupCard(move, CardStateType::kFaceDown));
     players_.at(dealToPlayer).SortCards();
 
-
     // 3 situations when chance node hit:
     // - Beginning of game dealing cards
     // - ChallengeFailReplaceCard
@@ -402,7 +401,18 @@ void CoupState::DoApplyAction(Action move) {
       NextPlayerMove();
 
     } else if (move == ActionType::kExchange) {
-      // TODO
+      if (is_turn_begin_) {
+        // Before allowing the action to take effect,
+        // the opponent must not challenge
+        cp.last_action = move;
+        NextPlayerMove();
+      } else {
+        // Draw 2 cards (in next chance nodes)
+        deal_card_to_.push(cur_player_move_);
+        deal_card_to_.push(cur_player_move_);
+        is_chance_ = true;
+        // Don't increment player. Still their move.
+      }
 
     } else if (move == ActionType::kSteal) {
       SPIEL_CHECK_GE(op.coins, 1);
@@ -491,9 +501,17 @@ void CoupState::DoApplyAction(Action move) {
     } else if (move == ActionType::kChallengeExchange) {
       cp.last_action = move;
       if (op.HasFaceDownCard(CardType::kAmbassador)) {
-
+        cp.lost_challenge = true;
+        ChallengeFailReplaceCard(CardType::kAmbassador);
+        // Complete the action
+        NextPlayerMove();
+        DoApplyAction(ActionType::kExchange);
+        // cp must lose a card
+        // After exchange return, it will switch to their action
       } else {
-
+        op.lost_challenge = true;
+        // opp must lose a card
+        NextPlayerMove();
       }
 
     } else if (move == ActionType::kChallengeAssassinate) {
@@ -563,8 +581,37 @@ void CoupState::DoApplyAction(Action move) {
         NextPlayerMove();
       }
 
-    } else if () { // exch ret TODO
+    } else if (move >= ActionType::kExchangeReturn12 &&
+               move <= ActionType::kExchangeReturn34) {
+      cp.last_action = move;
+      std::vector<int> cardInd;
+      if (move <= ActionType::kExchangeReturn14) cardInd.push_back(0);
+      if (move == ActionType::kExchangeReturn12 ||
+          move == ActionType::kExchangeReturn23 ||
+          move == ActionType::kExchangeReturn24) cardInd.push_back(1);
+      if (move == ActionType::kExchangeReturn13 ||
+          move == ActionType::kExchangeReturn23 ||
+          move == ActionType::kExchangeReturn34) cardInd.push_back(2);
+      if (move == ActionType::kExchangeReturn14 ||
+          move == ActionType::kExchangeReturn24 ||
+          move == ActionType::kExchangeReturn34) cardInd.push_back(3);
+      SPIEL_CHECK_EQ(cardInd.size(), 2);
 
+      int c;
+      for (int i = 1; i >= 0; --i) {
+        c = cardInd.at(i);
+        // Remove from hand and put back in deck
+        cp.cards.erase(cp.cards.begin()+c);
+        deck_.at(c) += 1;
+      }
+      SPIEL_CHECK_EQ(cp.cards.size(), 2);
+
+      if (op.lost_challenge) {
+        // op needs to lose a card
+        NextPlayerMove();
+      } else {
+        NextPlayerTurn();
+      }
 
     } else {
       SpielFatalError("Invalid player action");
