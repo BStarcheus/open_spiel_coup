@@ -193,6 +193,9 @@ class CoupState : public State {
   // cur_player_move_ must have the player to go back to,
   // so need to track chance here instead.
   bool is_chance_;
+  // Track the current reward in a single time step (by each player's perspective)
+  // Reset each player's reward at the beginning of their move (DoApplyAction)
+  std::vector<double> cur_rewards_;
 };
 
 class CoupGame : public Game {

@@ -266,7 +266,8 @@ CoupState::CoupState(std::shared_ptr<const Game> game)
       opp_player_(1),
       is_turn_begin_(true),
       turn_number_(0),
-      is_chance_(true) {
+      is_chance_(true),
+      cur_rewards_(num_players_, 0) {
   // Start game
   // Chance node first to deal cards
 
@@ -356,6 +357,9 @@ void CoupState::DoApplyAction(Action move) {
     CoupPlayer &cp = players_.at(cur_player_move_);
     CoupPlayer &op = players_.at(opp_player_);
 
+    // Reset reward
+    cur_rewards_.at(cur_player_move_) = 0;
+
     if (move == ActionType::kIncome) {
       cp.last_action = move;
       cp.coins += 1;
@@ -438,6 +442,8 @@ void CoupState::DoApplyAction(Action move) {
       cp.cards.at(cardToLose).state = CardStateType::kFaceUp;
       cp.lost_challenge = false;
       cp.SortCards();
+      cur_rewards_.at(cur_player_move_) -= 1;
+      cur_rewards_.at(opp_player_) += 1;
       NextPlayerTurn();
 
     } else if (move >= ActionType::kPassFA &&
@@ -519,8 +525,17 @@ void CoupState::DoApplyAction(Action move) {
       if (op.HasFaceDownCard(CardType::kAssassin)) {
         // cp loses game. Lose 1 for assassination
         // and 1 for losing challenge
-        cp.cards.at(0).state = CardStateType::kFaceUp;
-        cp.cards.at(1).state = CardStateType::kFaceUp;
+        // (if they werent already eliminated)
+        if (cp.cards.at(0).state == CardStateType::kFaceDown) {
+          cp.cards.at(0).state = CardStateType::kFaceUp;
+          cur_rewards_.at(cur_player_move_) -= 1;
+          cur_rewards_.at(opp_player_) += 1;
+        }
+        if (cp.cards.at(1).state == CardStateType::kFaceDown) {
+          cp.cards.at(1).state = CardStateType::kFaceUp;
+          cur_rewards_.at(cur_player_move_) -= 1;
+          cur_rewards_.at(opp_player_) += 1;
+        }
       } else {
         op.lost_challenge = true;
         // Coins spent are returned in this one case
@@ -538,8 +553,17 @@ void CoupState::DoApplyAction(Action move) {
       } else {
         // op loses game. Lose 1 for assassination
         // and 1 for losing challenge
-        op.cards.at(0).state = CardStateType::kFaceUp;
-        op.cards.at(1).state = CardStateType::kFaceUp;
+        // (if they werent already eliminated)
+        if (op.cards.at(0).state == CardStateType::kFaceDown) {
+          op.cards.at(0).state = CardStateType::kFaceUp;
+          cur_rewards_.at(cur_player_move_) += 1;
+          cur_rewards_.at(opp_player_) -= 1;
+        }
+        if (op.cards.at(1).state == CardStateType::kFaceDown) {
+          op.cards.at(1).state = CardStateType::kFaceUp;
+          cur_rewards_.at(cur_player_move_) += 1;
+          cur_rewards_.at(opp_player_) -= 1;
+        }
       }
 
     } else if (move == ActionType::kChallengeSteal) {
@@ -806,21 +830,25 @@ bool CoupState::IsTerminal() const {
   else return true;
 }
 
-std::vector<double> Rewards() const {
-
+std::vector<double> CoupState::Rewards() const {
+  return cur_rewards_;
 }
 
 std::vector<double> CoupState::Returns() const {
-  if (!IsTerminal()) {
-    return std::vector<double>(num_players_, 0.0);
-  }
-
   std::vector<double> returns(num_players_);
-  for (auto player = Player{0}; player < num_players_; ++player) {
-    // Money vs money at start.
-    returns[player] = money_[player] - kStartingMoney;
-  }
 
+  // Get count of face up cards
+  std::vector<int> faceUp(num_players_, 0);
+  for (int i = 0; i < num_players_; ++i) {
+    for (auto &c: players_.at(i).cards) {
+      if (c.state == CardStateType::kFaceUp) {
+        faceUp.at(i) += 1;
+      }
+    }
+  }
+  // + reward for opp losing cards, - reward for you losing cards
+  returns.at(0) = faceUp.at(1) - faceUp.at(0);
+  returns.at(1) = faceUp.at(0) - faceUp.at(1);
   return returns;
 }
 
