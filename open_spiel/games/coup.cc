@@ -57,13 +57,88 @@ std::shared_ptr<const Game> Factory(const GameParameters& params) {
 
 REGISTER_SPIEL_GAME(kGameType, Factory);
 
-std::string StatelessActionToString(Action action) {
-  if (action == ActionType::kFold) {
-    return "Fold";
-  } else if (action == ActionType::kCall) {
-    return "Call";
-  } else if (action == ActionType::kRaise) {
-    return "Raise";
+std::string StatelessCardToString(CardType card) {
+  if (card == CardType::kAssassin) {
+    return "Assassin";
+  } else if (card == CardType::kAmbassador) {
+    return "Ambassador";
+  } else if (card == CardType::kCaptain) {
+    return "Captain";
+  } else if (card == CardType::kContessa) {
+    return "Contessa";
+  } else if (card == CardType::kDuke) {
+    return "Duke";
+  } else {
+    SpielFatalError(absl::StrCat("Unknown card: ", card));
+    return "Will not return.";
+  }
+}
+
+std::string StatelessActionToString(ActionType action) {
+  if (action == ActionType::kIncome) {
+    return "Income";
+  } else if (action == ActionType::kForeignAid) {
+    return "ForeignAid";
+  } else if (action == ActionType::kCoup) {
+    return "Coup";
+  } else if (action == ActionType::kTax) {
+    return "Tax";
+  } else if (action == ActionType::kAssassinate) {
+    return "Assassinate";
+  } else if (action == ActionType::kExchange) {
+    return "Exchange";
+  } else if (action == ActionType::kSteal) {
+    return "Steal";
+  } else if (action == ActionType::kLoseCard1) {
+    return "LoseCard1";
+  } else if (action == ActionType::kLoseCard2) {
+    return "LoseCard2";
+  } else if (action == ActionType::kPassFA) {
+    return "PassFA";
+  } else if (action == ActionType::kPassFABlock) {
+    return "PassFABlock";
+  } else if (action == ActionType::kPassTax) {
+    return "PassTax";
+  } else if (action == ActionType::kPassExchange) {
+    return "PassExchange";
+  } else if (action == ActionType::kPassAssassinateBlock) {
+    return "PassAssassinateBlock";
+  } else if (action == ActionType::kPassSteal) {
+    return "PassSteal";
+  } else if (action == ActionType::kPassStealBlock) {
+    return "PassStealBlock";
+  } else if (action == ActionType::kBlockFA) {
+    return "BlockFA";
+  } else if (action == ActionType::kBlockAssassinate) {
+    return "BlockAssassinate";
+  } else if (action == ActionType::kBlockSteal) {
+    return "BlockSteal";
+  } else if (action == ActionType::kChallengeFABlock) {
+    return "ChallengeFABlock";
+  } else if (action == ActionType::kChallengeTax) {
+    return "ChallengeTax";
+  } else if (action == ActionType::kChallengeExchange) {
+    return "ChallengeExchange";
+  } else if (action == ActionType::kChallengeAssassinate) {
+    return "ChallengeAssassinate";
+  } else if (action == ActionType::kChallengeAssassinateBlock) {
+    return "ChallengeAssassinateBlock";
+  } else if (action == ActionType::kChallengeSteal) {
+    return "ChallengeSteal";
+  } else if (action == ActionType::kChallengeStealBlock) {
+    return "ChallengeStealBlock";
+  } else if (action == ActionType::kExchangeReturn12) {
+    return "ExchangeReturn12";
+  } else if (action == ActionType::kExchangeReturn13) {
+    return "ExchangeReturn13";
+  } else if (action == ActionType::kExchangeReturn14) {
+    return "ExchangeReturn14";
+  } else if (action == ActionType::kExchangeReturn23) {
+    return "ExchangeReturn23";
+  } else if (action == ActionType::kExchangeReturn24) {
+    return "ExchangeReturn24";
+  } else if (action == ActionType::kExchangeReturn34) {
+    return "ExchangeReturn34";
   } else {
     SpielFatalError(absl::StrCat("Unknown action: ", action));
     return "Will not return.";
@@ -982,7 +1057,7 @@ std::shared_ptr<Observer> CoupGame::MakeObserver(
 
 std::string CoupGame::ActionToString(Player player, Action action) const {
   if (player == kChancePlayerId) {
-    return absl::StrCat("Chance outcome:", action);
+    return absl::StrCat("Chance drawn card:", StatelessCardToString((CardType)action));
   } else {
     return StatelessActionToString(action);
   }
