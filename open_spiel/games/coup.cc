@@ -157,14 +157,6 @@ ObserverRegisterer single_tensor(
     kGameType.short_name, "single_tensor", MakeSingleTensorObserver);
 }  // namespace
 
-// The Observer class is responsible for creating representations of the game
-// state for use in learning algorithms. It handles both string and tensor
-// representations, and any combination of public information and private
-// information (none, observing player only, or all players).
-//
-// If a perfect recall observation is requested, it must be possible to deduce
-// all previous observations for the same information type from the current
-// observation.
 
 class CoupObserver : public Observer {
  public:
@@ -172,48 +164,65 @@ class CoupObserver : public Observer {
       : Observer(/*has_string=*/true, /*has_tensor=*/true),
         iig_obs_type_(iig_obs_type) {}
 
-  //
-  // These helper methods each write a piece of the tensor observation.
-  //
+  // Helper methods to write each piece of the tensor
 
-  // Identity of the observing player. One-hot vector of size num_players.
-  static void WriteObservingPlayer(const CoupState& state, int player,
-                                   Allocator* allocator) {
-    auto out = allocator->Get("player", {state.num_players_});
+  // Identity of player. One-hot vector of size num_players.
+  // Used both for observing player and player whose move it is.
+  static void WritePlayer(const CoupState& state, int player,
+                          Allocator* allocator,
+                          std::string prefix) {
+    auto out = allocator->Get(prefix + "player", {state.num_players_});
     out.at(player) = 1;
   }
 
-  // Private card of the observing player. One-hot vector of size num_cards.
-  static void WriteSinglePlayerCard(const CoupState& state, int player,
-                                    Allocator* allocator) {
-    auto out = allocator->Get("private_card", {state.NumObservableCards()});
-    int card = state.private_cards_[player];
-    if (card != kInvalidCard) out.at(card) = 1;
+  // Full private info of card values of player
+  static void WritePlayerCardsPrivate(const CoupState& state, int player,
+                                      Allocator* allocator) {
+    
+    auto out = allocator->Get("", {state.num_players_});
+    // TODO
   }
 
-  // Private cards of all players. Tensor of shape [num_players, num_cards].
-  static void WriteAllPlayerCards(const CoupState& state,
-                                  Allocator* allocator) {
-    auto out = allocator->Get("private_cards",
-                              {state.num_players_, state.NumObservableCards()});
+  // Card value info of player from opponent's perspective.
+  // Full public info, and private is included but hidden.
+  static void WritePlayerCardsPublic(const CoupState& state, int player,
+                                     Allocator* allocator) {
+    
+    auto out = allocator->Get("", {state.num_players_});
+    // TODO
+  }
+
+  // Card state (non-existent, face down, face up). Always public for all players.
+  static void WriteCardsState(const CoupState& state,
+                              Allocator* allocator) {
+    
+    auto out = allocator->Get("", {state.num_players_});
+    // TODO
+  }
+
+  // Coins for each player. Public.
+  static void WriteCoins(const CoupState& state,
+                         Allocator* allocator) {
+    auto out = allocator->Get("coins", {state.num_players_});
     for (int p = 0; p < state.num_players_; ++p) {
-      int card = state.private_cards_[p];
-      if (card != kInvalidCard) out.at(p, state.private_cards_[p]) = 1;
+      out.at(p) = state.players_.at(p).coins;
     }
   }
 
-  // Community card (if any). One-hot vector of size num_cards.
-  static void WriteCommunityCard(const CoupState& state,
-                                 Allocator* allocator) {
-    auto out = allocator->Get("community_card", {state.NumObservableCards()});
-    if (state.public_card_ != kInvalidCard) {
-      out.at(state.public_card_) = 1;
+  // Last action for each player. Public.
+  // Don't call if perfect recall (will already get the full history)
+  static void WriteLastAction(const CoupState& state,
+                              Allocator* allocator) {
+    auto out = allocator->Get("last_action", {state.num_players_, 
+                                              state.num_distinct_actions_});
+    for (int p = 0; p < state.num_players_; ++p) {
+      out.at(p, (int)state.players_.at(p).last_action) = 1;
     }
   }
 
-  // Betting sequence; shape [num_rounds, bets_per_round, num_actions].
-  static void WriteBettingSequence(const CoupState& state,
-                                   Allocator* allocator) {
+  // Action history. Shape [].
+  static void WriteActionHistory(const CoupState& state,
+                                  Allocator* allocator) {
     const int kNumRounds = 2;
     const int kBitsPerAction = 2;
     const int max_bets_per_round = state.MaxBetsPerRound();
@@ -232,46 +241,55 @@ class CoupObserver : public Observer {
     }
   }
 
-  // Pot contribution per player (integer per player).
-  static void WritePotContribution(const CoupState& state,
-                                   Allocator* allocator) {
-    auto out = allocator->Get("pot_contribution", {state.num_players_});
-    for (auto p = Player{0}; p < state.num_players_; p++) {
-      out.at(p) = state.ante_[p];
-    }
-  }
-
-  // Writes the complete observation in tensor form.
-  // The supplied allocator is responsible for providing memory to write the
-  // observation into.
+  // Write the complete observation as tensor
   void WriteTensor(const State& observed_state, int player,
                    Allocator* allocator) const override {
     auto& state = open_spiel::down_cast<const CoupState&>(observed_state);
     SPIEL_CHECK_GE(player, 0);
     SPIEL_CHECK_LT(player, state.num_players_);
 
-    // Observing player.
-    WriteObservingPlayer(state, player, allocator);
+    // Observing player
+    WritePlayer(state, player, allocator, "");
 
-    // Private card(s).
+    // Private cards
     if (iig_obs_type_.private_info == PrivateInfoType::kSinglePlayer) {
-      WriteSinglePlayerCard(state, player, allocator);
+      WritePlayerCardsPrivate(state, player, allocator);
     } else if (iig_obs_type_.private_info == PrivateInfoType::kAllPlayers) {
-      WriteAllPlayerCards(state, allocator);
+      for (int p = 0; p < state.num_players_; ++p) {
+        WritePlayerCardsPrivate(state, p, allocator);
+      }
     }
 
-    // Public information.
+    // Public information
     if (iig_obs_type_.public_info) {
-      WriteCommunityCard(state, allocator);
-      iig_obs_type_.perfect_recall ? WriteBettingSequence(state, allocator)
-                                   : WritePotContribution(state, allocator);
+      if (state.IsTerminal()) {
+        // No one's move
+        // Leave as all 0
+        auto out = allocator->Get("cur_move_player", {state.num_players_});
+      } else {
+        // Current move player
+        WritePlayer(state, player, allocator, "cur_move_");
+      }
+
+      // Write the rest of the players card info from public perspective
+      if (iig_obs_type_.private_info == PrivateInfoType::kSinglePlayer) {
+        for (int p = 0; p < state.num_players_; ++p) {
+          if (p != player) WritePlayerCardsPublic(state, p, allocator);
+        }
+      }
+
+      WriteCardsState(state, allocator);
+      WriteCoins(state, allocator);
+
+      if (iig_obs_type_.perfect_recall) {
+        WriteActionSequence(state, allocator);
+      } else {
+        WriteLastAction(state, allocator);
+      }
     }
   }
 
-  // Writes an observation in string form. It would be possible just to
-  // turn the tensor observation into a string, but we prefer something
-  // somewhat human-readable.
-
+  // Write the complete observation as string, human-readable
   std::string StringFrom(const State& observed_state,
                          int player) const override {
     auto& state = open_spiel::down_cast<const CoupState&>(observed_state);
@@ -310,8 +328,6 @@ class CoupObserver : public Observer {
                         "]");
       }
     }
-
-    // Done.
     return result;
   }
 
