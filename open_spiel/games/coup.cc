@@ -239,7 +239,8 @@ class CoupObserver : public Observer {
     auto out = allocator->Get("last_action", {state.num_players_, 
                                               state.num_distinct_actions_});
     for (int p = 0; p < state.num_players_; ++p) {
-      out.at(p, (int)state.players_.at(p).last_action) = 1;
+      ActionType a = state.players_.at(p).last_action;
+      if (a != ActionType::kNone) out.at(p, (int)a) = 1;
     }
   }
 
@@ -252,7 +253,15 @@ class CoupObserver : public Observer {
 
     auto out = allocator->Get("history",
                               {game.MaxMoveNumber(), game.NumDistinctActions()});
-    // TODO
+
+    for (int i = 0; i < state.history_.size(); ++i) {
+      int p = (int)state.history_.at(i).player;
+      if (p >= 0 || (p == kChancePlayerId &&
+          state.history_chance_deal_player_.at(i) == player)) {
+        ActionType a = state.history_.at(i).action;
+        if (a != ActionType::kNone) out.at(i, (int)a) = 1;
+      }
+    }
   }
 
   // Write the complete observation as tensor
