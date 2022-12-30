@@ -1065,25 +1065,31 @@ std::unique_ptr<State> CoupGame::NewInitialState() const {
 }
 
 std::vector<int> CoupGame::InformationStateTensorShape() const {
-  // One-hot encoding for player number (who is to play).
-  // 2 slots of cards (total_cards_ bits each): private card, public card
-  // Followed by maximum game length * 2 bits each (call / raise)
-  if (suit_isomorphism_) {
-    return {(num_players_) + (total_cards_) + (MaxGameLength() * 2)};
-  } else {
-    return {(num_players_) + (total_cards_ * 2) + (MaxGameLength() * 2)};
-  }
+  // Tensor contents (all one-hot):
+  // Observing player [NumPlayers]
+  // cur_player_move_ [NumPlayers]
+  // Card values      [NumPlayers, MaxCardsInHand, NumCardTypes]
+  // Card states      [NumPlayers, MaxCardsInHand, 2]
+  // Coins            [NumPlayers]
+  // Action Sequence  [MaxMoveNum, NumDistinctActions]
+
+  // Card values are hidden if private to opponent
+  return {NumPlayers() * (3 + kMaxCardsInHand * (kNumCardTypes + 2))
+          + MaxMoveNumber() * NumDistinctActions()};
 }
 
 std::vector<int> CoupGame::ObservationTensorShape() const {
-  // One-hot encoding for player number (who is to play).
-  // 2 slots of cards (total_cards_ bits each): private card, public card
-  // Followed by the contribution of each player to the pot
-  if (suit_isomorphism_) {
-    return {(num_players_) + (total_cards_) + (num_players_)};
-  } else {
-    return {(num_players_) + (total_cards_ * 2) + (num_players_)};
-  }
+  // Tensor contents (all one-hot):
+  // Observing player [NumPlayers]
+  // cur_player_move_ [NumPlayers]
+  // Card values      [NumPlayers, MaxCardsInHand, NumCardTypes]
+  // Card states      [NumPlayers, MaxCardsInHand, 2]
+  // Coins            [NumPlayers]
+  // Last Action      [NumPlayers, NumDistinctActions]
+
+  // Card values are hidden if private to opponent
+  return {NumPlayers() * (3 + kMaxCardsInHand * (kNumCardTypes + 2)
+          + NumDistinctActions())};
 }
 
 std::shared_ptr<Observer> CoupGame::MakeObserver(
