@@ -14,8 +14,7 @@
 
 // Coup
 // 
-// 
-// Parameters:
+// TODO
 
 #ifndef OPEN_SPIEL_GAMES_COUP_H_
 #define OPEN_SPIEL_GAMES_COUP_H_
@@ -34,9 +33,11 @@
 namespace open_spiel {
 namespace coup {
 
-// Parameters
-
+// Constants
 inline constexpr int kNumPlayers = 2;
+inline constexpr int kMaxCardsInHand = 4;
+inline constexpr int kNumCardTypes = 5;
+inline constexpr int kNumEachCardInDeck = 3;
 
 class CoupGame;
 class CoupObserver;
@@ -204,7 +205,7 @@ class CoupGame : public Game {
 
   int NumDistinctActions() const override { return 32; }
   std::unique_ptr<State> NewInitialState() const override;
-  int MaxChanceOutcomes() const override { return 5; }
+  int MaxChanceOutcomes() const override { return kNumCardTypes; }
   int NumPlayers() const override { return kNumPlayers; }
   double MinUtility() const override { return -2; }
   double MaxUtility() const override { return 2; }
@@ -216,9 +217,9 @@ class CoupGame : public Game {
   // Unlike chess, no rules on repeated moves.
   // Could continue to steal from eachother, or exchange with deck forever.
   // Choosing arbitrary large value.
-  int MaxGameLength() const override { return 1000; }
+  int MaxGameLength() const override { return 300; }
   // Given MaxGameLength, overestimating chance nodes
-  int MaxChanceNodesInHistory() const override { return 400; }
+  int MaxChanceNodesInHistory() const override { return 200; }
   
   //Serialize? ToString?
   std::string ActionToString(Player player, Action action) const override;

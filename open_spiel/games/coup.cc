@@ -175,29 +175,52 @@ class CoupObserver : public Observer {
     out.at(player) = 1;
   }
 
+  // The following card tensors contain a one-hot vector for each card
+  // (for both value and state).
+  // This is so that the card value can correspond to the card state by index.
+  // We store kMaxCardsInHand regardless of how many cards they have in order
+  // to have a constant size tensor.
+  // If a card is hidden/private or non-existent the value vector is all 0.
+  // If a card is non-existent (e.g. player only has 2 cards in hand,
+  // so cards 3,4 are "non-existent") the state vector is all 0.
+
   // Full private info of card values of player
   static void WritePlayerCardsPrivate(const CoupState& state, int player,
                                       Allocator* allocator) {
-    
-    auto out = allocator->Get("", {state.num_players_});
-    // TODO
+    auto out = allocator->Get("p" + std::to_string(player+1) + "_cards",
+                              {kMaxCardsInHand, kNumCardTypes});
+    for (int i = 0; i < state.players_.at(player).cards.size(); ++i) {
+      CardType card = state.players_.at(player).cards.at(i).value;
+      if (card != CardType::kNone) out.at(i, (int)card) = 1;
+    }
   }
 
   // Card value info of player from opponent's perspective.
   // Full public info, and private is included but hidden.
   static void WritePlayerCardsPublic(const CoupState& state, int player,
                                      Allocator* allocator) {
-    
-    auto out = allocator->Get("", {state.num_players_});
-    // TODO
+    auto out = allocator->Get("p" + std::to_string(player+1) + "_cards",
+                              {kMaxCardsInHand, kNumCardTypes});
+    for (int i = 0; i < state.players_.at(player).cards.size(); ++i) {
+      CardStateType cs = state.players_.at(player).cards.at(i).state;
+      if (cs == CardStateType::kFaceUp) {
+        CardType card = state.players_.at(player).cards.at(i).value;
+        if (card != CardType::kNone) out.at(i, (int)card) = 1;
+      }
+    }
   }
 
   // Card state (non-existent, face down, face up). Always public for all players.
   static void WriteCardsState(const CoupState& state,
                               Allocator* allocator) {
-    
-    auto out = allocator->Get("", {state.num_players_});
-    // TODO
+    auto out = allocator->Get("cards_state",
+                              {state.num_players_, kMaxCardsInHand, 2});
+    for (int p = 0; p < state.num_players_; ++p) {
+      for (int i = 0; i < state.players_.at(p).cards.size(); ++i) {
+        CardStateType cs = state.players_.at(p).cards.at(i).state;
+        if (cs != CardStateType::kNone) out.at(p, i, (int)cs) = 1;
+      }
+    }
   }
 
   // Coins for each player. Public.
@@ -220,25 +243,16 @@ class CoupObserver : public Observer {
     }
   }
 
-  // Action history. Shape [].
-  static void WriteActionHistory(const CoupState& state,
+  // Complete action history, except for chance deals to opponent (private).
+  // Need all info for perfect recall. Since we don't store old infostates,
+  // need all actions to be able to determine what previous infostates were.
+  static void WriteActionHistory(const CoupState& state, int player,
                                   Allocator* allocator) {
-    const int kNumRounds = 2;
-    const int kBitsPerAction = 2;
-    const int max_bets_per_round = state.MaxBetsPerRound();
-    auto out = allocator->Get("betting",
-                              {kNumRounds, max_bets_per_round, kBitsPerAction});
-    for (int round : {0, 1}) {
-      const auto& bets =
-          (round == 0) ? state.round1_sequence_ : state.round2_sequence_;
-      for (int i = 0; i < bets.size(); ++i) {
-        if (bets[i] == ActionType::kCall) {
-          out.at(round, i, 0) = 1;  // Encode call as 10.
-        } else if (bets[i] == ActionType::kRaise) {
-          out.at(round, i, 1) = 1;  // Encode raise as 01.
-        }
-      }
-    }
+    auto& game = open_spiel::down_cast<const CoupGame&>(*state.GetGame());
+
+    auto out = allocator->Get("history",
+                              {game.MaxMoveNumber(), game.NumDistinctActions()});
+    // TODO
   }
 
   // Write the complete observation as tensor
@@ -351,7 +365,7 @@ void CoupPlayer::SortCards() {
 
 CoupState::CoupState(std::shared_ptr<const Game> game)
     : State(game),
-      deck_(5, 3),
+      deck_(kNumCardTypes, kNumEachCardInDeck),
       cur_player_turn_(0),
       cur_player_move_(0),
       opp_player_(1),
@@ -943,13 +957,11 @@ std::vector<double> CoupState::Returns() const {
   return returns;
 }
 
-// Information state is card then bets.
 std::string CoupState::InformationStateString(Player player) const {
   const CoupGame& game = open_spiel::down_cast<const CoupGame&>(*game_);
   return game.info_state_observer_->StringFrom(*this, player);
 }
 
-// Observation is card then contribution of each players to the pot.
 std::string CoupState::ObservationString(Player player) const {
   const CoupGame& game = open_spiel::down_cast<const CoupGame&>(*game_);
   return game.default_observer_->StringFrom(*this, player);
