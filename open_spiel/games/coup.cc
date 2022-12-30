@@ -443,6 +443,11 @@ void CoupState::DoApplyAction(Action move) {
     // Player gets random card from deck
 
     Player dealToPlayer = deal_card_to_.pop();
+
+    // Track which player is being dealt to
+    history_chance_deal_player_.insert({history_.size(), dealToPlayer});
+
+    // Deal the card
     deck_.at(move) -= 1;
     players_.at(dealToPlayer).cards.push_back(
         CoupCard(move, CardStateType::kFaceDown));

@@ -25,6 +25,7 @@
 #include <utility>
 #include <vector>
 #include <queue>
+#include <map>
 
 #include "open_spiel/observer.h"
 #include "open_spiel/policy.h"
@@ -183,6 +184,10 @@ class CoupState : public State {
   Player cur_player_move_;
   // Opponent of cur_player_move_
   Player opp_player_;
+  // Track which player is being dealt a card at chance nodes.
+  // Map the index of the chance node in history_ to the player.
+  // Used for creating action sequence for perfect recall.
+  std::map<int, int> history_chance_deal_player_;
   // Whether it is the beginning of a player's turn
   bool is_turn_begin_;
   // Track turns in addition to move_number_
