@@ -966,33 +966,48 @@ std::string CoupState::ActionToString(Player player, Action move) const {
   return GetGame()->ActionToString(player, move);
 }
 
+// Complete observation including all private info
 std::string CoupState::ToString() const {
   std::string result;
 
-  absl::StrAppend(&result, "Round: ", round_, "\nPlayer: ", cur_player_,
-                  "\nPot: ", pot_, "\nMoney (p1 p2 ...):");
-  for (auto p = Player{0}; p < num_players_; p++) {
-    absl::StrAppend(&result, " ", money_[p]);
-  }
-  absl::StrAppend(&result, "\nCards (public p1 p2 ...): ", public_card_, " ");
-  for (Player player_index = 0; player_index < num_players_; player_index++) {
-    absl::StrAppend(&result, private_cards_[player_index], " ");
-  }
+  absl::StrAppend(&result, "Turn: ", turn_number_, "\n");
+  absl::StrAppend(&result, "Move: P", cur_player_move_+1, "\n");
 
-  absl::StrAppend(&result, "\nRound 1 sequence: ");
-  for (int i = 0; i < round1_sequence_.size(); ++i) {
-    Action action = round1_sequence_[i];
-    if (i > 0) absl::StrAppend(&result, ", ");
-    absl::StrAppend(&result, StatelessActionToString(action));
+  for (int p = 0; p < num_players_; ++p) {
+    absl::StrAppend(&result, "P", p+1, "\n");
+    absl::StrAppend(&result, "        Card         State\n");
+
+    for (int c = 0; c < players_.at(p).cards.size(); ++c) {
+      absl::StrAppend(&result, "Card ", c+1, ": ");
+
+      CoupCard& coupCard = players_.at(p).cards.at(c);
+      std::string cardVal = StatelessCardToString(coupCard.value);
+      std::string space(11-cardVal.length(), ' ');
+      absl::StrAppend(&result, cardVal, space, "| ");
+      
+      std::string cardState = StatelessCardStateToString(coupCard.state);
+      absl::StrAppend(&result, cardState, "\n");
+    }
+    absl::StrAppend(&result, "Coins: ", players_.at(p).coins, "\n");
+    absl::StrAppend(&result, "Last Action: ", 
+      StatelessActionToString(players_.at(p).last_action), "\n\n");
   }
-  absl::StrAppend(&result, "\nRound 2 sequence: ");
-  for (int i = 0; i < round2_sequence_.size(); ++i) {
-    Action action = round2_sequence_[i];
-    if (i > 0) absl::StrAppend(&result, ", ");
-    absl::StrAppend(&result, StatelessActionToString(action));
+  absl::StrAppend(&result, "Action Sequence: ");
+  for (int i = 0; i < history_.size(); ++i) {
+    auto& pa = history_.at(i);
+    if (pa.player == kChancePlayerId) {
+      absl::StrAppend(&result, "PC-");
+      absl::StrAppend(&result, StatelessCardToString(pa.action));
+      if (i < history_.size()-1) 
+        absl::StrAppend(&result, ", ");
+    } else {
+      absl::StrAppend(&result, "P", pa.player+1, "-");
+      absl::StrAppend(&result, StatelessActionToString(pa.action));
+      if (i < history_.size()-1) 
+        absl::StrAppend(&result, ", ");
+    }
   }
   absl::StrAppend(&result, "\n");
-
   return result;
 }
 
