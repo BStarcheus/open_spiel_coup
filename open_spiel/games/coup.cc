@@ -58,7 +58,9 @@ std::shared_ptr<const Game> Factory(const GameParameters& params) {
 REGISTER_SPIEL_GAME(kGameType, Factory);
 
 std::string StatelessCardToString(CardType card) {
-  if (card == CardType::kAssassin) {
+  if (card == CardType::kNone) {
+    return "-";
+  } else if (card == CardType::kAssassin) {
     return "Assassin";
   } else if (card == CardType::kAmbassador) {
     return "Ambassador";
@@ -74,8 +76,23 @@ std::string StatelessCardToString(CardType card) {
   }
 }
 
+std::string StatelessCardStateToString(CardStateType cardState) {
+  if (cardState == CardStateType::kNone) {
+    return "None";
+  } else if (cardState == CardStateType::kFaceDown) {
+    return "FaceDown";
+  } else if (cardState == CardStateType::kFaceUp) {
+    return "FaceUp";
+  } else {
+    SpielFatalError(absl::StrCat("Unknown card state type: ", cardState));
+    return "Will not return.";
+  }
+}
+
 std::string StatelessActionToString(ActionType action) {
-  if (action == ActionType::kIncome) {
+  if (action == ActionType::kNone) {
+    return "None";
+  } else if (action == ActionType::kIncome) {
     return "Income";
   } else if (action == ActionType::kForeignAid) {
     return "ForeignAid";
@@ -291,7 +308,7 @@ class CoupObserver : public Observer {
         auto out = allocator->Get("cur_move_player", {state.num_players_});
       } else {
         // Current move player
-        WritePlayer(state, player, allocator, "cur_move_");
+        WritePlayer(state, state.cur_player_move_, allocator, "cur_move_");
       }
 
       // Write the rest of the players card info from public perspective
@@ -312,7 +329,7 @@ class CoupObserver : public Observer {
     }
   }
 
-  // Write the complete observation as string, human-readable
+  // Write the observation as string, human-readable
   std::string StringFrom(const State& observed_state,
                          int player) const override {
     auto& state = open_spiel::down_cast<const CoupState&>(observed_state);
@@ -320,36 +337,76 @@ class CoupObserver : public Observer {
     SPIEL_CHECK_LT(player, state.num_players_);
     std::string result;
 
-    // Private card(s).
-    if (iig_obs_type_.private_info == PrivateInfoType::kSinglePlayer) {
-      absl::StrAppend(&result, "[Observer: ", player, "]");
-      absl::StrAppend(&result, "[Private: ", state.private_cards_[player], "]");
-    } else if (iig_obs_type_.private_info == PrivateInfoType::kAllPlayers) {
-      absl::StrAppend(
-          &result, "[Privates: ", absl::StrJoin(state.private_cards_, ""), "]");
+    absl::StrAppend(&result, "Observer: P", player+1, "\n");
+    if (iig_obs_type_.public_info) {
+      absl::StrAppend(&result, "Turn: ", state.turn_number_, "\n");
+      absl::StrAppend(&result, "Move: P", state.cur_player_move_+1, "\n");
     }
 
-    // Public info. Not all of this is strictly necessary, but it makes the
-    // string easier to understand.
-    if (iig_obs_type_.public_info) {
-      absl::StrAppend(&result, "[Round ", state.round_, "]");
-      absl::StrAppend(&result, "[Player: ", state.cur_player_, "]");
-      absl::StrAppend(&result, "[Pot: ", state.pot_, "]");
-      absl::StrAppend(&result, "[Money: ", absl::StrJoin(state.money_, " "),
-                      "]");
-      if (state.public_card_ != kInvalidCard) {
-        absl::StrAppend(&result, "[Public: ", state.public_card_, "]");
+    for (int p = 0; p < state.num_players_; ++p) {
+      if (iig_obs_type_.public_info || 
+          iig_obs_type_.private_info == PrivateInfoType::kAllPlayers ||
+          (iig_obs_type_.private_info == PrivateInfoType::kSinglePlayer &&
+              player == p)) {
+        absl::StrAppend(&result, "P", p+1, "\n");
+        absl::StrAppend(&result, "        Card         State\n");
+
+        for (int c = 0; c < state.players_.at(p).cards.size(); ++c) {
+          absl::StrAppend(&result, "Card ", c+1, ": ");
+
+          CoupCard& coupCard = state.players_.at(p).cards.at(c);
+          std::string cardVal;
+          if ((iig_obs_type_.public_info && coupCard.state == CardStateType::kFaceUp) ||
+              (iig_obs_type_.private_info == PrivateInfoType::kSinglePlayer &&
+                  p == player &&
+                  coupCard.state == CardStateType::kFaceDown) ||
+              (iig_obs_type_.private_info == PrivateInfoType::kAllPlayers &&
+                  coupCard.state == CardStateType::kFaceDown)) {
+            // Show card value
+            cardVal = StatelessCardToString(coupCard.value);
+          } else {
+            // Hidden card
+            cardVal = StatelessCardToString(CardType::kNone);
+          }
+          std::string space(11-cardVal.length(), ' ');
+          absl::StrAppend(&result, cardVal, space, "| ");
+          
+          std::string cardState;
+          if (iig_obs_type_.public_info) {
+            cardState = StatelessCardStateToString(coupCard.state);
+          } else {
+            cardState = StatelessCardStateToString(CardStateType::kNone);
+          }
+          absl::StrAppend(&result, cardState, "\n");
+        }
       }
-      if (iig_obs_type_.perfect_recall) {
-        // Betting Sequence (for the perfect recall case)
-        absl::StrAppend(
-            &result, "[Round1: ", absl::StrJoin(state.round1_sequence_, " "),
-            "][Round2: ", absl::StrJoin(state.round2_sequence_, " "), "]");
-      } else {
-        // Pot contributions (imperfect recall)
-        absl::StrAppend(&result, "[Ante: ", absl::StrJoin(state.ante_, " "),
-                        "]");
+
+      if (iig_obs_type_.public_info) {
+        absl::StrAppend(&result, "Coins: ", state.players_.at(p).coins, "\n");
+
+        if (!iig_obs_type_.perfect_recall) {
+          absl::StrAppend(&result, "Last Action: ", 
+            StatelessActionToString(state.players_.at(p).last_action), "\n\n");
+        } else { absl::StrAppend(&result, "\n"); }
       }
+    }
+
+    if (iig_obs_type_.public_info && iig_obs_type_.perfect_recall) {
+      absl::StrAppend(&result, "Action Sequence: ");
+      for (int i = 0; i < state.history_.size(); ++i) {
+        auto& pa = state.history_.at(i);
+        if (pa.player == kChancePlayerId) {
+          if (state.history_chance_deal_player_.at(i) == player) {
+            // Only show card deals if it is for observing player
+            absl::StrAppend(&result, "PC-");
+            absl::StrAppend(&result, StatelessCardToString(pa.action), ", ");
+          }
+        } else {
+          absl::StrAppend(&result, "P", pa.player+1, "-");
+          absl::StrAppend(&result, StatelessActionToString(pa.action), ", ");
+        }
+      }
+      absl::StrAppend(&result, "\n");
     }
     return result;
   }
