@@ -399,11 +399,15 @@ class CoupObserver : public Observer {
           if (state.history_chance_deal_player_.at(i) == player) {
             // Only show card deals if it is for observing player
             absl::StrAppend(&result, "PC-");
-            absl::StrAppend(&result, StatelessCardToString(pa.action), ", ");
+            absl::StrAppend(&result, StatelessCardToString(pa.action));
+            if (i < state.history_.size()-1) 
+              absl::StrAppend(&result, ", ");
           }
         } else {
           absl::StrAppend(&result, "P", pa.player+1, "-");
-          absl::StrAppend(&result, StatelessActionToString(pa.action), ", ");
+          absl::StrAppend(&result, StatelessActionToString(pa.action));
+          if (i < state.history_.size()-1) 
+            absl::StrAppend(&result, ", ");
         }
       }
       absl::StrAppend(&result, "\n");
