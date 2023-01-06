@@ -201,28 +201,30 @@ class CoupObserver : public Observer {
   // If a card is non-existent (e.g. player only has 2 cards in hand,
   // so cards 3,4 are "non-existent") the state vector is all 0.
 
-  // Full private info of card values of player
+  // Private card value info of face down cards for player
   static void WritePlayerCardsPrivate(const CoupState& state, int player,
                                       Allocator* allocator) {
     auto out = allocator->Get("p" + std::to_string(player+1) + "_cards",
                               {kMaxCardsInHand, kNumCardTypes});
     for (int i = 0; i < state.players_.at(player).cards.size(); ++i) {
-      CardType card = state.players_.at(player).cards.at(i).value;
-      if (card != CardType::kNone) out.at(i, (int)card) = 1;
+      CoupCard& card = state.players_.at(player).cards.at(i);
+      if (card.value != CardType::kNone &&
+          card.state == CardStateType::kFaceDown) {
+        out.at(i, (int)card.value) = 1;
+      }
     }
   }
 
-  // Card value info of player from opponent's perspective.
-  // Full public info, and private is included but hidden.
+  // Public card value info of face up cards for player
   static void WritePlayerCardsPublic(const CoupState& state, int player,
                                      Allocator* allocator) {
     auto out = allocator->Get("p" + std::to_string(player+1) + "_cards",
                               {kMaxCardsInHand, kNumCardTypes});
     for (int i = 0; i < state.players_.at(player).cards.size(); ++i) {
-      CardStateType cs = state.players_.at(player).cards.at(i).state;
-      if (cs == CardStateType::kFaceUp) {
-        CardType card = state.players_.at(player).cards.at(i).value;
-        if (card != CardType::kNone) out.at(i, (int)card) = 1;
+      CoupCard& card = state.players_.at(player).cards.at(i);
+      if (card.value != CardType::kNone &&
+          card.state == CardStateType::kFaceUp) {
+        out.at(i, (int)card.value) = 1;
       }
     }
   }
@@ -311,11 +313,9 @@ class CoupObserver : public Observer {
         WritePlayer(state, state.cur_player_move_, allocator, "cur_move_");
       }
 
-      // Write the rest of the players card info from public perspective
-      if (iig_obs_type_.private_info == PrivateInfoType::kSinglePlayer) {
-        for (int p = 0; p < state.num_players_; ++p) {
-          if (p != player) WritePlayerCardsPublic(state, p, allocator);
-        }
+      // Write the public portion of player card info
+      for (int p = 0; p < state.num_players_; ++p) {
+        WritePlayerCardsPublic(state, p, allocator);
       }
 
       WriteCardsState(state, allocator);
