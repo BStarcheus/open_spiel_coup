@@ -36,7 +36,9 @@ RUN ctest -j12
 WORKDIR /repo/open_spiel
 
 # minimal image for development in Python
-FROM python:3.6-slim-buster as python-slim
+# FROM python:3.6-slim-buster as python-slim
+# For running on Nvidia A100
+FROM nvcr.io/nvidia/tensorflow:22.04-tf2-py3 as tfpy
 RUN mkdir repo
 WORKDIR /repo
 COPY --from=base /repo .
