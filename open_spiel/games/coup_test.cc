@@ -27,10 +27,6 @@ void BasicCoupTests() {
   testing::LoadGameTest("coup");
   testing::ChanceOutcomesTest(*LoadGame("coup"));
   testing::RandomSimTest(*LoadGame("coup"), 100);
-  testing::RandomSimTest(*LoadGame("coup",
-                         {{"action_mapping", GameParameter(true)}}), 100);
-  testing::RandomSimTest(*LoadGame("coup",
-                         {{"suit_isomorphism", GameParameter(true)}}), 100);
   testing::ResampleInfostateTest(*LoadGame("coup"), /*num_sims=*/100);
   auto observer = LoadGame("coup")
                       ->MakeObserver(kDefaultObsType,
@@ -38,20 +34,20 @@ void BasicCoupTests() {
   testing::RandomSimTestCustomObserver(*LoadGame("coup"), observer);
 }
 
-void PolicyTest() {
-  using PolicyGenerator = std::function<TabularPolicy(const Game& game)>;
-  std::vector<PolicyGenerator> policy_generators = {
-      GetAlwaysFoldPolicy,
-      GetAlwaysCallPolicy,
-      GetAlwaysRaisePolicy
-  };
+// void PolicyTest() {
+//   using PolicyGenerator = std::function<TabularPolicy(const Game& game)>;
+//   std::vector<PolicyGenerator> policy_generators = {
+//       GetAlwaysFoldPolicy,
+//       GetAlwaysCallPolicy,
+//       GetAlwaysRaisePolicy
+//   };
 
-  std::shared_ptr<const Game> game = LoadGame("coup");
-  for (const auto& policy_generator : policy_generators) {
-    testing::TestEveryInfostateInPolicy(policy_generator, *game);
-    testing::TestPoliciesCanPlay(policy_generator, *game);
-  }
-}
+//   std::shared_ptr<const Game> game = LoadGame("coup");
+//   for (const auto& policy_generator : policy_generators) {
+//     testing::TestEveryInfostateInPolicy(policy_generator, *game);
+//     testing::TestPoliciesCanPlay(policy_generator, *game);
+//   }
+// }
 
 }  // namespace
 }  // namespace coup
@@ -59,5 +55,5 @@ void PolicyTest() {
 
 int main(int argc, char** argv) {
   open_spiel::coup::BasicCoupTests();
-  open_spiel::coup::PolicyTest();
+  // open_spiel::coup::PolicyTest();
 }

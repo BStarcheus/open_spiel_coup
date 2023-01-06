@@ -1168,23 +1168,23 @@ std::string CoupGame::ActionToString(Player player, Action action) const {
   }
 }
 
-TabularPolicy GetAlwaysFoldPolicy(const Game& game) {
-  SPIEL_CHECK_TRUE(
-      dynamic_cast<CoupGame*>(const_cast<Game*>(&game)) != nullptr);
-  return GetPrefActionPolicy(game, {ActionType::kFold, ActionType::kCall});
-}
+// TabularPolicy GetAlwaysFoldPolicy(const Game& game) {
+//   SPIEL_CHECK_TRUE(
+//       dynamic_cast<CoupGame*>(const_cast<Game*>(&game)) != nullptr);
+//   return GetPrefActionPolicy(game, {ActionType::kFold, ActionType::kCall});
+// }
 
-TabularPolicy GetAlwaysCallPolicy(const Game& game) {
-  SPIEL_CHECK_TRUE(
-      dynamic_cast<CoupGame*>(const_cast<Game*>(&game)) != nullptr);
-  return GetPrefActionPolicy(game, {ActionType::kCall});
-}
+// TabularPolicy GetAlwaysCallPolicy(const Game& game) {
+//   SPIEL_CHECK_TRUE(
+//       dynamic_cast<CoupGame*>(const_cast<Game*>(&game)) != nullptr);
+//   return GetPrefActionPolicy(game, {ActionType::kCall});
+// }
 
-TabularPolicy GetAlwaysRaisePolicy(const Game& game) {
-  SPIEL_CHECK_TRUE(
-      dynamic_cast<CoupGame*>(const_cast<Game*>(&game)) != nullptr);
-  return GetPrefActionPolicy(game, {ActionType::kRaise, ActionType::kCall});
-}
+// TabularPolicy GetAlwaysRaisePolicy(const Game& game) {
+//   SPIEL_CHECK_TRUE(
+//       dynamic_cast<CoupGame*>(const_cast<Game*>(&game)) != nullptr);
+//   return GetPrefActionPolicy(game, {ActionType::kRaise, ActionType::kCall});
+// }
 
 }  // namespace coup
 }  // namespace open_spiel
