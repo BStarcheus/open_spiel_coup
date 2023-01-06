@@ -144,11 +144,6 @@ class CoupState : public State {
 
   std::vector<Action> LegalActions() const override;
 
-  // Returns a vector of MaxGameLength containing all of the betting actions
-  // taken so far. If the round has ended, the actions are kInvalidAction.
-  std::unique_ptr<State> ResampleFromInfostate(
-      int player_id, std::function<double()> rng) const override;
-
   std::vector<Action> ActionsConsistentWithInformationFrom(
       Action action) const override {
     return {action};

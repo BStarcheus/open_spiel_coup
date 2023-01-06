@@ -1105,31 +1105,6 @@ void CoupState::NextPlayerMove() {
   is_turn_begin_ = false;
 }
 
-std::unique_ptr<State> CoupState::ResampleFromInfostate(
-    int player_id, std::function<double()> rng) const {
-  std::unique_ptr<State> clone = game_->NewInitialState();
-
-  // First, deal out cards:
-  Action player_chance = history_.at(player_id).action;
-  for (int p = 0; p < GetGame()->NumPlayers(); ++p) {
-    if (p == player_id) {
-      clone->ApplyAction(history_.at(p).action);
-    } else {
-      Action chosen_action = player_chance;
-      while (chosen_action == player_chance || chosen_action == public_card_) {
-        chosen_action = SampleAction(clone->ChanceOutcomes(), rng()).first;
-      }
-      clone->ApplyAction(chosen_action);
-    }
-  }
-  for (int action : round1_sequence_) clone->ApplyAction(action);
-  if (public_card_ != kInvalidCard) {
-    clone->ApplyAction(public_card_);
-    for (int action : round2_sequence_) clone->ApplyAction(action);
-  }
-  return clone;
-}
-
 CoupGame::CoupGame(const GameParameters& params)
     : Game(kGameType, params) {
   default_observer_ = std::make_shared<CoupObserver>(kDefaultObsType);
