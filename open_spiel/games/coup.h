@@ -13,8 +13,12 @@
 // limitations under the License.
 
 // Coup
+// 2-player version only
 // 
-// TODO
+// A board game based on deception. The goal is to eliminate opponents' cards
+// and be the last player standing. Use your cards' abilities, or bluff and
+// use other abilities. Challenge opponents if you think they are bluffing.
+// https://www.ultraboardgames.com/coup/game-rules.php
 
 #ifndef OPEN_SPIEL_GAMES_COUP_H_
 #define OPEN_SPIEL_GAMES_COUP_H_
