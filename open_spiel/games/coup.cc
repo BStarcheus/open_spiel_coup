@@ -1018,6 +1018,12 @@ std::string CoupState::ToString() const {
 bool CoupState::IsTerminal() const {
   int numPlayersAlive = 0;
   for (auto &p: players_) {
+    if (p.cards.size() < 2) {
+      // p is being dealt a card, so still alive
+      numPlayersAlive += 1;
+      continue;
+    }
+    
     for (auto &c: p.cards) {
       if (c.state == CardStateType::kFaceDown) {
         numPlayersAlive += 1; 
