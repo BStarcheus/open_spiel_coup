@@ -1040,7 +1040,7 @@ std::vector<double> CoupState::Rewards() const {
 }
 
 std::vector<double> CoupState::Returns() const {
-  std::vector<double> returns(num_players_);
+  std::vector<double> returns(num_players_, 0);
 
   // Get count of face up cards
   std::vector<int> faceUp(num_players_, 0);
@@ -1090,7 +1090,7 @@ std::vector<std::pair<Action, double>> CoupState::ChanceOutcomes() const {
   std::vector<std::pair<Action, double>> outcomes;
 
   // Num cards in deck
-  auto deckSize = std::reduce(deck_.begin(), deck_.end());
+  double deckSize = std::reduce(deck_.begin(), deck_.end());
 
   double p;
   for (int i = 0; i < deck_.size(); ++i) {
