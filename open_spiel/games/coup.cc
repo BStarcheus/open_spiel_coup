@@ -207,7 +207,7 @@ class CoupObserver : public Observer {
     auto out = allocator->Get("p" + std::to_string(player+1) + "_cards",
                               {kMaxCardsInHand, kNumCardTypes});
     for (int i = 0; i < state.players_.at(player).cards.size(); ++i) {
-      CoupCard& card = state.players_.at(player).cards.at(i);
+      const CoupCard& card = state.players_.at(player).cards.at(i);
       if (card.value != CardType::kNone &&
           card.state == CardStateType::kFaceDown) {
         out.at(i, (int)card.value) = 1;
@@ -221,7 +221,7 @@ class CoupObserver : public Observer {
     auto out = allocator->Get("p" + std::to_string(player+1) + "_cards",
                               {kMaxCardsInHand, kNumCardTypes});
     for (int i = 0; i < state.players_.at(player).cards.size(); ++i) {
-      CoupCard& card = state.players_.at(player).cards.at(i);
+      const CoupCard& card = state.players_.at(player).cards.at(i);
       if (card.value != CardType::kNone &&
           card.state == CardStateType::kFaceUp) {
         out.at(i, (int)card.value) = 1;
@@ -236,7 +236,7 @@ class CoupObserver : public Observer {
                               {state.num_players_, kMaxCardsInHand, 2});
     for (int p = 0; p < state.num_players_; ++p) {
       for (int i = 0; i < state.players_.at(p).cards.size(); ++i) {
-        CardStateType cs = state.players_.at(p).cards.at(i).state;
+        const CardStateType& cs = state.players_.at(p).cards.at(i).state;
         if (cs != CardStateType::kNone) out.at(p, i, (int)cs) = 1;
       }
     }
@@ -258,7 +258,7 @@ class CoupObserver : public Observer {
     auto out = allocator->Get("last_action", {state.num_players_, 
                                               state.num_distinct_actions_});
     for (int p = 0; p < state.num_players_; ++p) {
-      ActionType a = state.players_.at(p).last_action;
+      const ActionType& a = state.players_.at(p).last_action;
       if (a != ActionType::kNone) out.at(p, (int)a) = 1;
     }
   }
@@ -277,8 +277,8 @@ class CoupObserver : public Observer {
       int p = (int)state.history_.at(i).player;
       if (p >= 0 || (p == kChancePlayerId &&
           state.history_chance_deal_player_.at(i) == player)) {
-        ActionType a = state.history_.at(i).action;
-        if (a != ActionType::kNone) out.at(i, (int)a) = 1;
+        const int& a = (int)state.history_.at(i).action;
+        if ((ActionType)a != ActionType::kNone) out.at(i, a) = 1;
       }
     }
   }
@@ -322,7 +322,7 @@ class CoupObserver : public Observer {
       WriteCoins(state, allocator);
 
       if (iig_obs_type_.perfect_recall) {
-        WriteActionSequence(state, allocator);
+        WriteActionHistory(state, player, allocator);
       } else {
         WriteLastAction(state, allocator);
       }
@@ -354,7 +354,7 @@ class CoupObserver : public Observer {
         for (int c = 0; c < state.players_.at(p).cards.size(); ++c) {
           absl::StrAppend(&result, "Card ", c+1, ": ");
 
-          CoupCard& coupCard = state.players_.at(p).cards.at(c);
+          const CoupCard& coupCard = state.players_.at(p).cards.at(c);
           std::string cardVal;
           if ((iig_obs_type_.public_info && coupCard.state == CardStateType::kFaceUp) ||
               (iig_obs_type_.private_info == PrivateInfoType::kSinglePlayer &&
@@ -399,13 +399,13 @@ class CoupObserver : public Observer {
           if (state.history_chance_deal_player_.at(i) == player) {
             // Only show card deals if it is for observing player
             absl::StrAppend(&result, "PC-");
-            absl::StrAppend(&result, StatelessCardToString(pa.action));
+            absl::StrAppend(&result, StatelessCardToString((CardType)pa.action));
             if (i < state.history_.size()-1) 
               absl::StrAppend(&result, ", ");
           }
         } else {
           absl::StrAppend(&result, "P", pa.player+1, "-");
-          absl::StrAppend(&result, StatelessActionToString(pa.action));
+          absl::StrAppend(&result, StatelessActionToString((ActionType)pa.action));
           if (i < state.history_.size()-1) 
             absl::StrAppend(&result, ", ");
         }
@@ -488,7 +488,7 @@ void CoupState::ChallengeFailReplaceCard(CardType card) {
     if (c.value == card &&
         c.state == CardStateType::kFaceDown) {
       // Remove from hand and put back in deck
-      deck_.at(card) += 1;
+      deck_.at((int)card) += 1;
       op.cards.erase(op.cards.begin()+i);
       // Chance player will deal a random card
       // to replace the card that was just revealed
@@ -512,7 +512,8 @@ void CoupState::DoApplyAction(Action move) {
     // All chance nodes have same action
     // Player gets random card from deck
 
-    Player dealToPlayer = deal_card_to_.pop();
+    int dealToPlayer = deal_card_to_.front();
+    deal_card_to_.pop();
 
     // Track which player is being dealt to
     history_chance_deal_player_.insert({history_.size(), dealToPlayer});
@@ -520,7 +521,7 @@ void CoupState::DoApplyAction(Action move) {
     // Deal the card
     deck_.at(move) -= 1;
     players_.at(dealToPlayer).cards.push_back(
-        CoupCard(move, CardStateType::kFaceDown));
+        CoupCard{(CardType)move, CardStateType::kFaceDown});
     players_.at(dealToPlayer).SortCards();
 
     // 3 situations when chance node hit:
@@ -540,16 +541,18 @@ void CoupState::DoApplyAction(Action move) {
     // Reset reward
     cur_rewards_.at(cur_player_move_) = 0;
 
-    if (move == ActionType::kIncome) {
-      cp.last_action = move;
+    ActionType action = (ActionType)move;
+
+    if (action == ActionType::kIncome) {
+      cp.last_action = action;
       cp.coins += 1;
       NextPlayerTurn();
 
-    } else if (move == ActionType::kForeignAid) {
+    } else if (action == ActionType::kForeignAid) {
       if (is_turn_begin_) {
         // Before allowing the action to take effect,
         // the opponent must not block it
-        cp.last_action = move;
+        cp.last_action = action;
         NextPlayerMove();
       } else {
         // PASS: Opponent did not block, so complete the action
@@ -557,18 +560,18 @@ void CoupState::DoApplyAction(Action move) {
         NextPlayerTurn();
       }
 
-    } else if (move == ActionType::kCoup) {
+    } else if (action == ActionType::kCoup) {
       SPIEL_CHECK_GE(cp.coins, 7);
 
-      cp.last_action = move;
+      cp.last_action = action;
       cp.coins -= 7;
       NextPlayerMove();
 
-    } else if (move == ActionType::kTax) {
+    } else if (action == ActionType::kTax) {
       if (is_turn_begin_) {
         // Before allowing the action to take effect,
         // the opponent must not challenge it
-        cp.last_action = move;
+        cp.last_action = action;
         NextPlayerMove();
       } else {
         // PASS: Opponent did not challenge, so complete the action
@@ -576,19 +579,19 @@ void CoupState::DoApplyAction(Action move) {
         NextPlayerTurn();
       }
 
-    } else if (move == ActionType::kAssassinate) {
+    } else if (action == ActionType::kAssassinate) {
       SPIEL_CHECK_GE(cp.coins, 3);
 
-      cp.last_action = move;
+      cp.last_action = action;
       // Pay the coins whether or not the action is blocked/challenged
       cp.coins -= 3;
       NextPlayerMove();
 
-    } else if (move == ActionType::kExchange) {
+    } else if (action == ActionType::kExchange) {
       if (is_turn_begin_) {
         // Before allowing the action to take effect,
         // the opponent must not challenge
-        cp.last_action = move;
+        cp.last_action = action;
         NextPlayerMove();
       } else {
         // Draw 2 cards (in next chance nodes)
@@ -598,13 +601,13 @@ void CoupState::DoApplyAction(Action move) {
         // Don't increment player. Still their move.
       }
 
-    } else if (move == ActionType::kSteal) {
+    } else if (action == ActionType::kSteal) {
       SPIEL_CHECK_GE(op.coins, 1);
 
       if (is_turn_begin_) {
         // Before allowing the action to take effect,
         // the opponent must not block/challenge
-        cp.last_action = move;
+        cp.last_action = action;
         NextPlayerMove();
       } else {
         // PASS: Opponent did not block/challenge, so complete the action
@@ -614,11 +617,12 @@ void CoupState::DoApplyAction(Action move) {
         NextPlayerTurn();
       }
 
-    } else if (move == ActionType::kLoseCard1 ||
-               move == ActionType::kLoseCard2) {
-      int cardToLose = move - ActionType::kLoseCard1;
-      SPIEL_CHECK_EQ(cp.cards.at(cardToLose).state, CardStateType::kFaceDown);
+    } else if (action == ActionType::kLoseCard1 ||
+               action == ActionType::kLoseCard2) {
+      int cardToLose = move - (int)ActionType::kLoseCard1;
+      SPIEL_CHECK_EQ((int)cp.cards.at(cardToLose).state, (int)CardStateType::kFaceDown);
 
+      cp.last_action = action;
       cp.cards.at(cardToLose).state = CardStateType::kFaceUp;
       cp.lost_challenge = false;
       cp.SortCards();
@@ -626,38 +630,38 @@ void CoupState::DoApplyAction(Action move) {
       cur_rewards_.at(opp_player_) += 1;
       NextPlayerTurn();
 
-    } else if (move >= ActionType::kPassFA &&
-               move <= ActionType::kPassStealBlock) {
-      cp.last_action = move;
-      Action act;
+    } else if (move >= (int)ActionType::kPassFA &&
+               move <= (int)ActionType::kPassStealBlock) {
+      cp.last_action = action;
+      ActionType n_act;
 
-      if (move == ActionType::kPassFABlock ||
-          move == ActionType::kPassAssassinateBlock ||
-          move == ActionType::kPassStealBlock) {
+      if (action == ActionType::kPassFABlock ||
+          action == ActionType::kPassAssassinateBlock ||
+          action == ActionType::kPassStealBlock) {
         // Block succeeds. Nothing to do.
         NextPlayerTurn();
       } else {
-        if (move == ActionType::kPassFA) {
-          act = ActionType::kForeignAid;
-        } else if (move == ActionType::kPassTax) {
-          act = ActionType::kTax;
-        } else if (move == ActionType::kPassExchange) {
-          act = ActionType::kExchange;
-        } else if (move == ActionType::kPassSteal) {
-          act = ActionType::kSteal;
+        if (action == ActionType::kPassFA) {
+          n_act = ActionType::kForeignAid;
+        } else if (action == ActionType::kPassTax) {
+          n_act = ActionType::kTax;
+        } else if (action == ActionType::kPassExchange) {
+          n_act = ActionType::kExchange;
+        } else if (action == ActionType::kPassSteal) {
+          n_act = ActionType::kSteal;
         }
         NextPlayerMove();
         // Pass, so complete their action
-        DoApplyAction(act);
+        DoApplyAction((Action)n_act);
       }
 
-    } else if (move >= ActionType::kBlockFA &&
-               move <= ActionType::kBlockSteal) {
-      cp.last_action = move;
+    } else if (move >= (int)ActionType::kBlockFA &&
+               move <= (int)ActionType::kBlockSteal) {
+      cp.last_action = action;
       NextPlayerMove();
 
-    } else if (move == ActionType::kChallengeFABlock) {
-      cp.last_action = move;
+    } else if (action == ActionType::kChallengeFABlock) {
+      cp.last_action = action;
       if (op.HasFaceDownCard(CardType::kDuke)) {
         cp.lost_challenge = true;
         ChallengeFailReplaceCard(CardType::kDuke);
@@ -670,8 +674,8 @@ void CoupState::DoApplyAction(Action move) {
         NextPlayerMove();
       }
 
-    } else if (move == ActionType::kChallengeTax) {
-      cp.last_action = move;
+    } else if (action == ActionType::kChallengeTax) {
+      cp.last_action = action;
       if (op.HasFaceDownCard(CardType::kDuke)) {
         cp.lost_challenge = true;
         ChallengeFailReplaceCard(CardType::kDuke);
@@ -684,14 +688,14 @@ void CoupState::DoApplyAction(Action move) {
         NextPlayerMove();
       }
 
-    } else if (move == ActionType::kChallengeExchange) {
-      cp.last_action = move;
+    } else if (action == ActionType::kChallengeExchange) {
+      cp.last_action = action;
       if (op.HasFaceDownCard(CardType::kAmbassador)) {
         cp.lost_challenge = true;
         ChallengeFailReplaceCard(CardType::kAmbassador);
         // Complete the action
         NextPlayerMove();
-        DoApplyAction(ActionType::kExchange);
+        DoApplyAction((Action)ActionType::kExchange);
         // cp must lose a card
         // After exchange return, it will switch to their action
       } else {
@@ -700,8 +704,8 @@ void CoupState::DoApplyAction(Action move) {
         NextPlayerMove();
       }
 
-    } else if (move == ActionType::kChallengeAssassinate) {
-      cp.last_action = move;
+    } else if (action == ActionType::kChallengeAssassinate) {
+      cp.last_action = action;
       if (op.HasFaceDownCard(CardType::kAssassin)) {
         // cp loses game. Lose 1 for assassination
         // and 1 for losing challenge
@@ -724,8 +728,8 @@ void CoupState::DoApplyAction(Action move) {
         NextPlayerMove();
       }
 
-    } else if (move == ActionType::kChallengeAssassinateBlock) {
-      cp.last_action = move;
+    } else if (action == ActionType::kChallengeAssassinateBlock) {
+      cp.last_action = action;
       if (op.HasFaceDownCard(CardType::kContessa)) {
         cp.lost_challenge = true;
         ChallengeFailReplaceCard(CardType::kContessa);
@@ -746,8 +750,8 @@ void CoupState::DoApplyAction(Action move) {
         }
       }
 
-    } else if (move == ActionType::kChallengeSteal) {
-      cp.last_action = move;
+    } else if (action == ActionType::kChallengeSteal) {
+      cp.last_action = action;
       if (op.HasFaceDownCard(CardType::kCaptain)) {
         cp.lost_challenge = true;
         ChallengeFailReplaceCard(CardType::kCaptain);
@@ -764,8 +768,8 @@ void CoupState::DoApplyAction(Action move) {
         NextPlayerMove();
       }
 
-    } else if (move == ActionType::kChallengeStealBlock) {
-      cp.last_action = move;
+    } else if (action == ActionType::kChallengeStealBlock) {
+      cp.last_action = action;
       if (op.HasFaceDownCard(CardType::kCaptain)) {
         cp.lost_challenge = true;
         ChallengeFailReplaceCard(CardType::kCaptain);
@@ -785,20 +789,20 @@ void CoupState::DoApplyAction(Action move) {
         NextPlayerMove();
       }
 
-    } else if (move >= ActionType::kExchangeReturn12 &&
-               move <= ActionType::kExchangeReturn34) {
-      cp.last_action = move;
+    } else if (move >= (int)ActionType::kExchangeReturn12 &&
+               move <= (int)ActionType::kExchangeReturn34) {
+      cp.last_action = action;
       std::vector<int> cardInd;
-      if (move <= ActionType::kExchangeReturn14) cardInd.push_back(0);
-      if (move == ActionType::kExchangeReturn12 ||
-          move == ActionType::kExchangeReturn23 ||
-          move == ActionType::kExchangeReturn24) cardInd.push_back(1);
-      if (move == ActionType::kExchangeReturn13 ||
-          move == ActionType::kExchangeReturn23 ||
-          move == ActionType::kExchangeReturn34) cardInd.push_back(2);
-      if (move == ActionType::kExchangeReturn14 ||
-          move == ActionType::kExchangeReturn24 ||
-          move == ActionType::kExchangeReturn34) cardInd.push_back(3);
+      if (move <= (int)ActionType::kExchangeReturn14) cardInd.push_back(0);
+      if (action == ActionType::kExchangeReturn12 ||
+          action == ActionType::kExchangeReturn23 ||
+          action == ActionType::kExchangeReturn24) cardInd.push_back(1);
+      if (action == ActionType::kExchangeReturn13 ||
+          action == ActionType::kExchangeReturn23 ||
+          action == ActionType::kExchangeReturn34) cardInd.push_back(2);
+      if (action == ActionType::kExchangeReturn14 ||
+          action == ActionType::kExchangeReturn24 ||
+          action == ActionType::kExchangeReturn34) cardInd.push_back(3);
       SPIEL_CHECK_EQ(cardInd.size(), 2);
 
       int c;
@@ -826,12 +830,12 @@ void CoupState::DoApplyAction(Action move) {
 std::vector<Action> CoupState::LegalLoseCardActions() const {
   // Show which cards the player can lose
   std::vector<Action> legal;
-  CoupPlayer &p = players_.at(cur_player_move_);
+  const CoupPlayer &p = players_.at(cur_player_move_);
   if (p.cards.at(0).state == CardStateType::kFaceDown) {
-    legal.push_back(ActionType::kLoseCard1)
+    legal.push_back((Action)ActionType::kLoseCard1);
   }
   if (p.cards.at(1).state == CardStateType::kFaceDown) {
-    legal.push_back(ActionType::kLoseCard2)
+    legal.push_back((Action)ActionType::kLoseCard2);
   }
   return legal;
 }
@@ -848,21 +852,21 @@ std::vector<Action> CoupState::LegalActions() const {
   }
   
   // else Decision node
-  CoupPlayer &cp = players_.at(cur_player_move_);
-  CoupPlayer &op = players_.at(opp_player_);
+  const CoupPlayer &cp = players_.at(cur_player_move_);
+  const CoupPlayer &op = players_.at(opp_player_);
   if (is_turn_begin_) {
     if (cp.coins >= 10) {
-      legal.push_back(ActionType::kCoup);
+      legal.push_back((Action)ActionType::kCoup);
       return legal;
     }
 
-    legal.push_back(ActionType::kIncome);
-    legal.push_back(ActionType::kForeignAid);
-    if (cp.coins >= 7) legal.push_back(ActionType::kCoup);
-    legal.push_back(ActionType::kTax);
-    if (cp.coins >= 3) legal.push_back(ActionType::kAssassinate);
-    legal.push_back(ActionType::kExchange);
-    if (op.coins > 0) legal.push_back(ActionType::kSteal);
+    legal.push_back((Action)ActionType::kIncome);
+    legal.push_back((Action)ActionType::kForeignAid);
+    if (cp.coins >= 7) legal.push_back((Action)ActionType::kCoup);
+    legal.push_back((Action)ActionType::kTax);
+    if (cp.coins >= 3) legal.push_back((Action)ActionType::kAssassinate);
+    legal.push_back((Action)ActionType::kExchange);
+    if (op.coins > 0) legal.push_back((Action)ActionType::kSteal);
     return legal;
 
   } else if (cp.lost_challenge) {
@@ -873,26 +877,26 @@ std::vector<Action> CoupState::LegalActions() const {
     // opponent's turn, so cur_player_move_ can
     // choose to block or challenge for certain actions
     if (op.last_action == ActionType::kForeignAid) {
-      legal = {ActionType::kPassFA, 
-               ActionType::kBlockFA};
+      legal = {(Action)ActionType::kPassFA, 
+               (Action)ActionType::kBlockFA};
       return legal;
     } else if (op.last_action == ActionType::kTax) {
-      legal = {ActionType::kPassTax, 
-               ActionType::kChallengeTax};
+      legal = {(Action)ActionType::kPassTax, 
+               (Action)ActionType::kChallengeTax};
       return legal;
     } else if (op.last_action == ActionType::kExchange) {
-      legal = {ActionType::kPassExchange,
-               ActionType::kChallengeExchange};
+      legal = {(Action)ActionType::kPassExchange,
+               (Action)ActionType::kChallengeExchange};
       return legal;
     } else if (op.last_action == ActionType::kSteal) {
-      legal = {ActionType::kPassSteal, 
-               ActionType::kBlockSteal,
-               ActionType::kChallengeSteal};
+      legal = {(Action)ActionType::kPassSteal, 
+               (Action)ActionType::kBlockSteal,
+               (Action)ActionType::kChallengeSteal};
       return legal;
     } else if (op.last_action == ActionType::kAssassinate) {
       legal = LegalLoseCardActions();
-      legal.push_back(ActionType::kBlockAssassinate);
-      legal.push_back(ActionType::kChallengeAssassinate);
+      legal.push_back((Action)ActionType::kBlockAssassinate);
+      legal.push_back((Action)ActionType::kChallengeAssassinate);
       return legal;
     } else if (op.last_action == ActionType::kCoup) {
       legal = LegalLoseCardActions();
@@ -917,44 +921,44 @@ std::vector<Action> CoupState::LegalActions() const {
     }
 
     if (faceUpInd == -1) {
-      legal = {ActionType::kExchangeReturn12,
-               ActionType::kExchangeReturn13,
-               ActionType::kExchangeReturn14,
-               ActionType::kExchangeReturn23,
-               ActionType::kExchangeReturn24,
-               ActionType::kExchangeReturn34};
+      legal = {(Action)ActionType::kExchangeReturn12,
+               (Action)ActionType::kExchangeReturn13,
+               (Action)ActionType::kExchangeReturn14,
+               (Action)ActionType::kExchangeReturn23,
+               (Action)ActionType::kExchangeReturn24,
+               (Action)ActionType::kExchangeReturn34};
     } else if (faceUpInd == 0) {
-      legal = {ActionType::kExchangeReturn23,
-               ActionType::kExchangeReturn24,
-               ActionType::kExchangeReturn34};
+      legal = {(Action)ActionType::kExchangeReturn23,
+               (Action)ActionType::kExchangeReturn24,
+               (Action)ActionType::kExchangeReturn34};
     } else if (faceUpInd == 1) {
-      legal = {ActionType::kExchangeReturn13,
-               ActionType::kExchangeReturn14,
-               ActionType::kExchangeReturn34};
+      legal = {(Action)ActionType::kExchangeReturn13,
+               (Action)ActionType::kExchangeReturn14,
+               (Action)ActionType::kExchangeReturn34};
     } else if (faceUpInd == 2) {
-      legal = {ActionType::kExchangeReturn12,
-               ActionType::kExchangeReturn14,
-               ActionType::kExchangeReturn24};
+      legal = {(Action)ActionType::kExchangeReturn12,
+               (Action)ActionType::kExchangeReturn14,
+               (Action)ActionType::kExchangeReturn24};
     } else if (faceUpInd == 3) {
-      legal = {ActionType::kExchangeReturn12,
-               ActionType::kExchangeReturn13,
-               ActionType::kExchangeReturn23};
+      legal = {(Action)ActionType::kExchangeReturn12,
+               (Action)ActionType::kExchangeReturn13,
+               (Action)ActionType::kExchangeReturn23};
     }
     return legal;
 
   } else if (op.last_action == ActionType::kBlockFA) {
-    legal = {ActionType::kPassFABlock,
-             ActionType::kChallengeFABlock};
+    legal = {(Action)ActionType::kPassFABlock,
+             (Action)ActionType::kChallengeFABlock};
     return legal;
 
   } else if (cp.last_action == ActionType::kBlockAssassinate) {
-    legal = {ActionType::kPassAssassinateBlock,
-             ActionType::kChallengeAssassinateBlock};
+    legal = {(Action)ActionType::kPassAssassinateBlock,
+             (Action)ActionType::kChallengeAssassinateBlock};
     return legal;
 
   } else if (cp.last_action == ActionType::kBlockSteal) {
-    legal = {ActionType::kPassStealBlock,
-             ActionType::kChallengeStealBlock};
+    legal = {(Action)ActionType::kPassStealBlock,
+             (Action)ActionType::kChallengeStealBlock};
     return legal;
 
   } else {
@@ -980,7 +984,7 @@ std::string CoupState::ToString() const {
     for (int c = 0; c < players_.at(p).cards.size(); ++c) {
       absl::StrAppend(&result, "Card ", c+1, ": ");
 
-      CoupCard& coupCard = players_.at(p).cards.at(c);
+      const CoupCard& coupCard = players_.at(p).cards.at(c);
       std::string cardVal = StatelessCardToString(coupCard.value);
       std::string space(11-cardVal.length(), ' ');
       absl::StrAppend(&result, cardVal, space, "| ");
@@ -997,12 +1001,12 @@ std::string CoupState::ToString() const {
     auto& pa = history_.at(i);
     if (pa.player == kChancePlayerId) {
       absl::StrAppend(&result, "PC-");
-      absl::StrAppend(&result, StatelessCardToString(pa.action));
+      absl::StrAppend(&result, StatelessCardToString((CardType)pa.action));
       if (i < history_.size()-1) 
         absl::StrAppend(&result, ", ");
     } else {
       absl::StrAppend(&result, "P", pa.player+1, "-");
-      absl::StrAppend(&result, StatelessActionToString(pa.action));
+      absl::StrAppend(&result, StatelessActionToString((ActionType)pa.action));
       if (i < history_.size()-1) 
         absl::StrAppend(&result, ", ");
     }
@@ -1082,7 +1086,7 @@ std::vector<std::pair<Action, double>> CoupState::ChanceOutcomes() const {
   // Num cards in deck
   auto deckSize = std::reduce(deck_.begin(), deck_.end());
 
-  const double p;
+  double p;
   for (int i = 0; i < deck_.size(); ++i) {
     p = deck_.at(i) / deckSize;
     outcomes.push_back({i, p});
@@ -1158,7 +1162,7 @@ std::string CoupGame::ActionToString(Player player, Action action) const {
   if (player == kChancePlayerId) {
     return absl::StrCat("Chance drawn card:", StatelessCardToString((CardType)action));
   } else {
-    return StatelessActionToString(action);
+    return StatelessActionToString((ActionType)action);
   }
 }
 
