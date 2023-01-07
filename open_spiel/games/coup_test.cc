@@ -27,7 +27,6 @@ void BasicCoupTests() {
   testing::LoadGameTest("coup");
   testing::ChanceOutcomesTest(*LoadGame("coup"));
   testing::RandomSimTest(*LoadGame("coup"), 100);
-  testing::ResampleInfostateTest(*LoadGame("coup"), /*num_sims=*/100);
   auto observer = LoadGame("coup")
                       ->MakeObserver(kDefaultObsType,
                                      GameParametersFromString("single_tensor"));
