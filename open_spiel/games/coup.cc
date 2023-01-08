@@ -201,29 +201,23 @@ class CoupObserver : public Observer {
   // If a card is non-existent (e.g. player only has 2 cards in hand,
   // so cards 3,4 are "non-existent") the state vector is all 0.
 
-  // Private card value info of face down cards for player
-  static void WritePlayerCardsPrivate(const CoupState& state, int player,
-                                      Allocator* allocator) {
-    auto out = allocator->Get("p" + std::to_string(player+1) + "_cards",
-                              {kMaxCardsInHand, kNumCardTypes});
-    for (int i = 0; i < state.players_.at(player).cards.size(); ++i) {
-      const CoupCard& card = state.players_.at(player).cards.at(i);
-      if (card.value != CardType::kNone &&
-          card.state == CardStateType::kFaceDown) {
-        out.at(i, (int)card.value) = 1;
-      }
-    }
-  }
+  // Write the card values for a player depending on whether
+  // the observation includes private and/or public
+  static void WritePlayerCardsValue(const CoupState& state, int player, 
+                                    int obsPlayer,
+                                    Allocator* allocator) {
+    bool private = iig_obs_type_.private_info == PrivateInfoType::kAllPlayers ||
+                   (iig_obs_type_.private_info == PrivateInfoType::kSinglePlayer &&
+                    obsPlayer == player);
+    bool public = iig_obs_type_.public_info;
 
-  // Public card value info of face up cards for player
-  static void WritePlayerCardsPublic(const CoupState& state, int player,
-                                     Allocator* allocator) {
     auto out = allocator->Get("p" + std::to_string(player+1) + "_cards",
                               {kMaxCardsInHand, kNumCardTypes});
     for (int i = 0; i < state.players_.at(player).cards.size(); ++i) {
       const CoupCard& card = state.players_.at(player).cards.at(i);
       if (card.value != CardType::kNone &&
-          card.state == CardStateType::kFaceUp) {
+          ((private && card.state == CardStateType::kFaceDown) ||
+          (public && card.state == CardStateType::kFaceUp))) {
         out.at(i, (int)card.value) = 1;
       }
     }
@@ -293,13 +287,9 @@ class CoupObserver : public Observer {
     // Observing player
     WritePlayer(state, player, allocator, "");
 
-    // Private cards
-    if (iig_obs_type_.private_info == PrivateInfoType::kSinglePlayer) {
-      WritePlayerCardsPrivate(state, player, allocator);
-    } else if (iig_obs_type_.private_info == PrivateInfoType::kAllPlayers) {
-      for (int p = 0; p < state.num_players_; ++p) {
-        WritePlayerCardsPrivate(state, p, allocator);
-      }
+    // Card value
+    for (int p = 0; p < state.num_players_; ++p) {
+      WritePlayerCardsValue(state, p, player, allocator);
     }
 
     // Public information
@@ -311,11 +301,6 @@ class CoupObserver : public Observer {
       } else {
         // Current move player
         WritePlayer(state, state.cur_player_move_, allocator, "cur_move_");
-      }
-
-      // Write the public portion of player card info
-      for (int p = 0; p < state.num_players_; ++p) {
-        WritePlayerCardsPublic(state, p, allocator);
       }
 
       WriteCardsState(state, allocator);
