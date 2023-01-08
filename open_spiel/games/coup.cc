@@ -204,20 +204,15 @@ class CoupObserver : public Observer {
   // Write the card values for a player depending on whether
   // the observation includes private and/or public
   static void WritePlayerCardsValue(const CoupState& state, int player, 
-                                    int obsPlayer,
+                                    bool priv, bool pub,
                                     Allocator* allocator) {
-    bool private = iig_obs_type_.private_info == PrivateInfoType::kAllPlayers ||
-                   (iig_obs_type_.private_info == PrivateInfoType::kSinglePlayer &&
-                    obsPlayer == player);
-    bool public = iig_obs_type_.public_info;
-
     auto out = allocator->Get("p" + std::to_string(player+1) + "_cards",
                               {kMaxCardsInHand, kNumCardTypes});
     for (int i = 0; i < state.players_.at(player).cards.size(); ++i) {
       const CoupCard& card = state.players_.at(player).cards.at(i);
       if (card.value != CardType::kNone &&
-          ((private && card.state == CardStateType::kFaceDown) ||
-          (public && card.state == CardStateType::kFaceUp))) {
+          ((priv && card.state == CardStateType::kFaceDown) ||
+          (pub && card.state == CardStateType::kFaceUp))) {
         out.at(i, (int)card.value) = 1;
       }
     }
@@ -288,8 +283,13 @@ class CoupObserver : public Observer {
     WritePlayer(state, player, allocator, "");
 
     // Card value
+    bool priv;
+    bool pub = iig_obs_type_.public_info;
     for (int p = 0; p < state.num_players_; ++p) {
-      WritePlayerCardsValue(state, p, player, allocator);
+      priv = iig_obs_type_.private_info == PrivateInfoType::kAllPlayers ||
+             (iig_obs_type_.private_info == PrivateInfoType::kSinglePlayer &&
+              p == player);
+      WritePlayerCardsValue(state, p, priv, pub, allocator);
     }
 
     // Public information
