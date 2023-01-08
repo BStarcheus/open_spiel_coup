@@ -678,6 +678,9 @@ void CoupState::DoApplyAction(Action move) {
       if (op.HasFaceDownCard(CardType::kAmbassador)) {
         cp.lost_challenge = true;
         ChallengeFailReplaceCard(CardType::kAmbassador);
+        // Turn off is_chance_ momentarily, so that Exchange below works.
+        // Exchange will turn it back on anyway.
+        is_chance_ = false;
         // Complete the action
         NextPlayerMove();
         DoApplyAction((Action)ActionType::kExchange);
@@ -887,7 +890,7 @@ std::vector<Action> CoupState::LegalActions() const {
       legal = LegalLoseCardActions();
       return legal;
     } else {
-      SpielFatalError("Error in LegalActions(): Invalid action progression");
+      SpielFatalError("Error in LegalActions(): Invalid action progression in cur_player_move_ != cur_player_turn_");
     }
 
   } else if (cp.last_action == ActionType::kExchange) {
