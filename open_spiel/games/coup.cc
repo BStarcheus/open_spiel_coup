@@ -939,12 +939,12 @@ std::vector<Action> CoupState::LegalActions() const {
              (Action)ActionType::kChallengeFABlock};
     return legal;
 
-  } else if (cp.last_action == ActionType::kBlockAssassinate) {
+  } else if (op.last_action == ActionType::kBlockAssassinate) {
     legal = {(Action)ActionType::kPassAssassinateBlock,
              (Action)ActionType::kChallengeAssassinateBlock};
     return legal;
 
-  } else if (cp.last_action == ActionType::kBlockSteal) {
+  } else if (op.last_action == ActionType::kBlockSteal) {
     legal = {(Action)ActionType::kPassStealBlock,
              (Action)ActionType::kChallengeStealBlock};
     return legal;
