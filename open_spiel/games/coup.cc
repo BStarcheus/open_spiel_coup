@@ -524,7 +524,7 @@ void CoupState::DoApplyAction(Action move) {
     CoupPlayer &op = players_.at(opp_player_);
 
     // Reset reward
-    cur_rewards_.at(cur_player_move_) = 0;
+    cur_rewards_ = {0, 0};
 
     ActionType action = (ActionType)move;
 
@@ -1024,7 +1024,12 @@ bool CoupState::IsTerminal() const {
 }
 
 std::vector<double> CoupState::Rewards() const {
-  return cur_rewards_;
+  if (IsTerminal()) {
+    return Returns();
+  } else {
+    SPIEL_CHECK_FALSE(IsChanceNode());
+    return cur_rewards_;
+  }
 }
 
 std::vector<double> CoupState::Returns() const {
