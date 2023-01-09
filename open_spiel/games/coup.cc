@@ -834,8 +834,11 @@ std::vector<Action> CoupState::LegalActions() const {
 
   if (IsChanceNode()) {
     // All chance nodes are the action of drawing a card
-    // 5 types of cards
-    legal = {0, 1, 2, 3, 4};
+    // Only show cards in the deck
+    for (int i = 0; i < deck_.size(); ++i) {
+      if (deck_.at(i) > 0)
+        legal.push_back(i);
+    }
     return legal;
   }
   
@@ -1082,8 +1085,10 @@ std::vector<std::pair<Action, double>> CoupState::ChanceOutcomes() const {
 
   double p;
   for (int i = 0; i < deck_.size(); ++i) {
-    p = deck_.at(i) / deckSize;
-    outcomes.push_back({i, p});
+    if (deck_.at(i) > 0) {
+      p = deck_.at(i) / deckSize;
+      outcomes.push_back({i, p});
+    }
   }
   return outcomes;
 }
