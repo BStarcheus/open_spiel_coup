@@ -1024,12 +1024,7 @@ bool CoupState::IsTerminal() const {
 }
 
 std::vector<double> CoupState::Rewards() const {
-  if (IsTerminal()) {
-    return Returns();
-  } else {
-    SPIEL_CHECK_FALSE(IsChanceNode());
-    return cur_rewards_;
-  }
+  return cur_rewards_;
 }
 
 std::vector<double> CoupState::Returns() const {
