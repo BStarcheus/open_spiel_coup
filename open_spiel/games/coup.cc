@@ -466,7 +466,7 @@ std::vector<CardType> CoupState::GetCardsValue(Player player) const {
 
 std::vector<CardStateType> CoupState::GetCardsState(Player player) const {
   SPIEL_CHECK_LT(player, NumPlayers());
-  std::vector<CardType> cards;
+  std::vector<CardStateType> cards;
   for (auto &c: players_.at(player).cards) {
     cards.push_back(c.state);
   }
