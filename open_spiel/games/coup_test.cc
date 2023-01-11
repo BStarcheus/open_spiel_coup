@@ -473,21 +473,21 @@ void CoupChallengeBlockForeignAidTest(CoupState& state) {
 }
 
 void CoupGameTests() {
-  const CoupGame& game = *LoadGame("coup");
-  CoupGameStartTest(*game.NewInitialState());
-  CoupIncomeTest(*game.NewInitialState());
-  CoupPassForeignAidTest(*game.NewInitialState());
-  CoupBlockForeignAidTest(*game.NewInitialState());
-  CoupChallengeForeignAidTest(*game.NewInitialState());
-  CoupLoseCardTest(*game.NewInitialState());
-  CoupAssassinateTest(*game.NewInitialState());
-  CoupDoubleAssassinateTest(*game.NewInitialState());
-  CoupExchangeTest(*game.NewInitialState());
-  CoupStealTest(*game.NewInitialState());
-  CoupBlockStealTest(*game.NewInitialState());
-  CoupBlockAssassinateTest(*game.NewInitialState());
-  CoupTaxTest(*game.NewInitialState());
-  CoupChallengeBlockForeignAidTest(*game.NewInitialState());
+  std::shared_ptr<const Game> game = LoadGame("coup");
+  CoupGameStartTest(CoupState(game));
+  CoupIncomeTest(CoupState(game));
+  CoupPassForeignAidTest(CoupState(game));
+  CoupBlockForeignAidTest(CoupState(game));
+  CoupChallengeForeignAidTest(CoupState(game));
+  CoupLoseCardTest(CoupState(game));
+  CoupAssassinateTest(CoupState(game));
+  CoupDoubleAssassinateTest(CoupState(game));
+  CoupExchangeTest(CoupState(game));
+  CoupStealTest(CoupState(game));
+  CoupBlockStealTest(CoupState(game));
+  CoupBlockAssassinateTest(CoupState(game));
+  CoupTaxTest(CoupState(game));
+  CoupChallengeBlockForeignAidTest(CoupState(game));
 }
 
 }  // namespace
