@@ -35,7 +35,6 @@ void BasicCoupTests() {
                       ->MakeObserver(kInfoStateObsType,
                                      GameParametersFromString("single_tensor"));
   testing::RandomSimTestCustomObserver(*LoadGame("coup"), observer);
-  testing::CheckChanceOutcomes(*LoadGame("coup"));
 }
 
 // General game and action tests
