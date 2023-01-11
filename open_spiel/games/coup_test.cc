@@ -474,20 +474,20 @@ void CoupChallengeBlockForeignAidTest(CoupState& state) {
 
 void CoupGameTests() {
   std::shared_ptr<const Game> game = LoadGame("coup");
-  CoupGameStartTest(CoupState(game));
-  CoupIncomeTest(CoupState(game));
-  CoupPassForeignAidTest(CoupState(game));
-  CoupBlockForeignAidTest(CoupState(game));
-  CoupChallengeForeignAidTest(CoupState(game));
-  CoupLoseCardTest(CoupState(game));
-  CoupAssassinateTest(CoupState(game));
-  CoupDoubleAssassinateTest(CoupState(game));
-  CoupExchangeTest(CoupState(game));
-  CoupStealTest(CoupState(game));
-  CoupBlockStealTest(CoupState(game));
-  CoupBlockAssassinateTest(CoupState(game));
-  CoupTaxTest(CoupState(game));
-  CoupChallengeBlockForeignAidTest(CoupState(game));
+  CoupGameStartTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
+  CoupIncomeTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
+  CoupPassForeignAidTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
+  CoupBlockForeignAidTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
+  CoupChallengeForeignAidTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
+  CoupLoseCardTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
+  CoupAssassinateTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
+  CoupDoubleAssassinateTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
+  CoupExchangeTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
+  CoupStealTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
+  CoupBlockStealTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
+  CoupBlockAssassinateTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
+  CoupTaxTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
+  CoupChallengeBlockForeignAidTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
 }
 
 }  // namespace
