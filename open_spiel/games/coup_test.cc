@@ -474,20 +474,20 @@ void CoupChallengeBlockForeignAidTest(CoupState& state) {
 
 void CoupGameTests() {
   std::shared_ptr<const Game> game = LoadGame("coup");
-  CoupGameStartTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
-  CoupIncomeTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
-  CoupPassForeignAidTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
-  CoupBlockForeignAidTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
-  CoupChallengeForeignAidTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
-  CoupLoseCardTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
-  CoupAssassinateTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
-  CoupDoubleAssassinateTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
-  CoupExchangeTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
-  CoupStealTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
-  CoupBlockStealTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
-  CoupBlockAssassinateTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
-  CoupTaxTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
-  CoupChallengeBlockForeignAidTest(open_spiel::down_cast<CoupState&>(game->NewInitialState()));
+  CoupGameStartTest(static_cast<CoupState&>(game->NewInitialState().get()));
+  CoupIncomeTest(static_cast<CoupState&>(game->NewInitialState().get()));
+  CoupPassForeignAidTest(static_cast<CoupState&>(game->NewInitialState().get()));
+  CoupBlockForeignAidTest(static_cast<CoupState&>(game->NewInitialState().get()));
+  CoupChallengeForeignAidTest(static_cast<CoupState&>(game->NewInitialState().get()));
+  CoupLoseCardTest(static_cast<CoupState&>(game->NewInitialState().get()));
+  CoupAssassinateTest(static_cast<CoupState&>(game->NewInitialState().get()));
+  CoupDoubleAssassinateTest(static_cast<CoupState&>(game->NewInitialState().get()));
+  CoupExchangeTest(static_cast<CoupState&>(game->NewInitialState().get()));
+  CoupStealTest(static_cast<CoupState&>(game->NewInitialState().get()));
+  CoupBlockStealTest(static_cast<CoupState&>(game->NewInitialState().get()));
+  CoupBlockAssassinateTest(static_cast<CoupState&>(game->NewInitialState().get()));
+  CoupTaxTest(static_cast<CoupState&>(game->NewInitialState().get()));
+  CoupChallengeBlockForeignAidTest(static_cast<CoupState&>(game->NewInitialState().get()));
 }
 
 }  // namespace
