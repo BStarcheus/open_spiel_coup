@@ -455,6 +455,34 @@ CoupState::CoupState(std::shared_ptr<const Game> game)
   deal_card_to_.push(1);
 }
 
+std::vector<CardType> CoupState::GetCardsValue(Player player) const {
+  SPIEL_CHECK_LT(player, NumPlayers());
+  std::vector<CardType> cards;
+  for (auto &c: players_.at(player).cards) {
+    cards.push_back(c.value);
+  }
+  return cards;
+}
+
+std::vector<CardStateType> CoupState::GetCardsState(Player player) const {
+  SPIEL_CHECK_LT(player, NumPlayers());
+  std::vector<CardType> cards;
+  for (auto &c: players_.at(player).cards) {
+    cards.push_back(c.state);
+  }
+  return cards;
+}
+
+int CoupState::GetCoins(Player player) const {
+  SPIEL_CHECK_LT(player, NumPlayers());
+  return players_.at(player).coins;
+}
+
+Action CoupState::GetLastAction(Player player) const {
+  SPIEL_CHECK_LT(player, NumPlayers());
+  return (Action)players_.at(player).last_action;
+}
+
 Player CoupState::CurrentPlayer() const {
   if (IsTerminal()) {
     return kTerminalPlayerId;

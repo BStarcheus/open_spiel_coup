@@ -48,19 +48,23 @@ void CoupGameStartTest(CoupState& state) {
   state.ApplyAction((Action)CardType::kDuke);
 
   // Card values and states
+  std::vector<CardType> cards;
+  std::vector<CardStateType> cardStates;
   for (int p = 0; p < state.NumPlayers(); ++p) {
-    SPIEL_CHECK_EQ(state.players_.at(p).cards.size(), 2);
-    for (int c = 0; c < 2; ++c) {
-      SPIEL_CHECK_GE((int)state.players_.at(0).cards.at(c).value, -1);
-      SPIEL_CHECK_EQ((int)state.players_.at(0).cards.at(c).state, (int)CardStateType::kFaceDown);
+    cards = state.GetCardsValue(p);
+    cardStates = state.GetCardsState(p);
+    SPIEL_CHECK_EQ(cards.size(), 2);
+    for (int c = 0; c < cards.size(); ++c) {
+      SPIEL_CHECK_GE((int)cards.at(c), -1);
+      SPIEL_CHECK_EQ((int)cardStates.at(c), (int)CardStateType::kFaceDown);
     }
   }
   // Coins
-  SPIEL_CHECK_EQ(state.players_.at(0).coins, 1);
-  SPIEL_CHECK_EQ(state.players_.at(1).coins, 2);
+  SPIEL_CHECK_EQ(state.GetCoins(0), 1);
+  SPIEL_CHECK_EQ(state.GetCoins(1), 2);
   // No last action
-  SPIEL_CHECK_EQ((int)state.players_.at(0).last_action, (int)ActionType::kNone);
-  SPIEL_CHECK_EQ((int)state.players_.at(1).last_action, (int)ActionType::kNone);
+  SPIEL_CHECK_EQ((int)state.GetLastAction(0), (int)ActionType::kNone);
+  SPIEL_CHECK_EQ((int)state.GetLastAction(1), (int)ActionType::kNone);
   // P1 first move
   SPIEL_CHECK_EQ(state.CurrentPlayer(), 0);
 }
@@ -74,7 +78,7 @@ void CoupIncomeTest(CoupState& state) {
 
   state.ApplyAction((Action)ActionType::kIncome);
 
-  SPIEL_CHECK_EQ(state.players_.at(0).coins, 2);
+  SPIEL_CHECK_EQ(state.GetCoins(0), 2);
   SPIEL_CHECK_EQ(state.CurrentPlayer(), 1);
   SPIEL_CHECK_FALSE(state.IsTerminal());
   std::vector<double> rewards = state.Rewards();
@@ -100,7 +104,7 @@ void CoupPassForeignAidTest(CoupState& state) {
   SPIEL_CHECK_TRUE(legal == correct);
   state.ApplyAction((Action)ActionType::kPassFA);
 
-  SPIEL_CHECK_EQ(state.players_.at(0).coins, 3);
+  SPIEL_CHECK_EQ(state.GetCoins(0), 3);
   SPIEL_CHECK_FALSE(state.IsTerminal());
   std::vector<double> rewards = state.Rewards();
   std::vector<double> returns = state.Returns();
@@ -126,7 +130,7 @@ void CoupBlockForeignAidTest(CoupState& state) {
   SPIEL_CHECK_TRUE(legal == correct);
   state.ApplyAction((Action)ActionType::kPassFABlock);
 
-  SPIEL_CHECK_EQ(state.players_.at(0).coins, 1);
+  SPIEL_CHECK_EQ(state.GetCoins(0), 1);
   SPIEL_CHECK_FALSE(state.IsTerminal());
   std::vector<double> rewards = state.Rewards();
   std::vector<double> returns = state.Returns();
@@ -154,7 +158,7 @@ void CoupChallengeForeignAidTest(CoupState& state) {
                                  (Action)ActionType::kLoseCard2};
   SPIEL_CHECK_TRUE(legal == correct);
 
-  SPIEL_CHECK_EQ(state.players_.at(0).coins, 1);
+  SPIEL_CHECK_EQ(state.GetCoins(0), 1);
   SPIEL_CHECK_FALSE(state.IsTerminal());
   std::vector<double> rewards = state.Rewards();
   std::vector<double> returns = state.Returns();
@@ -174,7 +178,7 @@ void CoupLoseCardTest(CoupState& state) {
   for (int i = 0; i < 11; ++i)
     state.ApplyAction((Action)ActionType::kIncome);
   SPIEL_CHECK_EQ(state.CurrentPlayer(), 1);
-  SPIEL_CHECK_EQ(state.players_.at(1).coins, 7);
+  SPIEL_CHECK_EQ(state.GetCoins(1), 7);
 
   state.ApplyAction((Action)ActionType::kCoup);
   
@@ -184,8 +188,8 @@ void CoupLoseCardTest(CoupState& state) {
   SPIEL_CHECK_TRUE(legal == correct);
   state.ApplyAction((Action)ActionType::kLoseCard1);
 
-  SPIEL_CHECK_EQ(state.players_.at(1).coins, 0);
-  SPIEL_CHECK_EQ((int)state.players_.at(0).cards.at(0).state, (int)CardStateType::kFaceUp);
+  SPIEL_CHECK_EQ(state.GetCoins(1), 0);
+  SPIEL_CHECK_EQ((int)state.GetCardsState(0).at(0), (int)CardStateType::kFaceUp);
   SPIEL_CHECK_FALSE(state.IsTerminal());
   std::vector<double> rewards = state.Rewards();
   std::vector<double> returns = state.Returns();
@@ -207,7 +211,7 @@ void CoupAssassinateTest(CoupState& state) {
   state.ApplyAction((Action)ActionType::kPassFA);
   state.ApplyAction((Action)ActionType::kIncome);
   SPIEL_CHECK_EQ(state.CurrentPlayer(), 0);
-  SPIEL_CHECK_EQ(state.players_.at(0).coins, 3);
+  SPIEL_CHECK_EQ(state.GetCoins(0), 3);
 
   state.ApplyAction((Action)ActionType::kAssassinate);
   
@@ -219,8 +223,8 @@ void CoupAssassinateTest(CoupState& state) {
   SPIEL_CHECK_TRUE(legal == correct);
   state.ApplyAction((Action)ActionType::kLoseCard1);
 
-  SPIEL_CHECK_EQ(state.players_.at(0).coins, 0);
-  SPIEL_CHECK_EQ((int)state.players_.at(1).cards.at(0).state, (int)CardStateType::kFaceUp);
+  SPIEL_CHECK_EQ(state.GetCoins(0), 0);
+  SPIEL_CHECK_EQ((int)state.GetCardsState(1).at(0), (int)CardStateType::kFaceUp);
   SPIEL_CHECK_FALSE(state.IsTerminal());
   std::vector<double> rewards = state.Rewards();
   std::vector<double> returns = state.Returns();
@@ -245,7 +249,7 @@ void CoupDoubleAssassinateTest(CoupState& state) {
   // P1 had an assassin, so P2 loses the challenge
   // Lose 1 card for assassinate, 1 for lost challenge,
   // therefore lose the game.
-  SPIEL_CHECK_EQ(state.players_.at(0).coins, 0);
+  SPIEL_CHECK_EQ(state.GetCoins(0), 0);
   SPIEL_CHECK_TRUE(state.IsTerminal());
   std::vector<double> rewards = state.Rewards();
   std::vector<double> returns = state.Returns();
@@ -276,7 +280,8 @@ void CoupExchangeTest(CoupState& state) {
   state.ApplyAction((Action)CardType::kDuke);
   state.ApplyAction((Action)CardType::kDuke);
   SPIEL_CHECK_EQ(state.CurrentPlayer(), 0);
-  SPIEL_CHECK_EQ(state.players_.at(0).cards.size(), 4);
+  std::vector<CardType> cards = state.GetCardsValue(0);
+  SPIEL_CHECK_EQ(cards.size(), 4);
   legal = state.LegalActions();
   correct = {(Action)ActionType::kExchangeReturn12,
              (Action)ActionType::kExchangeReturn13,
@@ -287,10 +292,12 @@ void CoupExchangeTest(CoupState& state) {
   SPIEL_CHECK_TRUE(legal == correct);
   state.ApplyAction((Action)ActionType::kExchangeReturn12);
 
-  SPIEL_CHECK_EQ(state.players_.at(0).cards.size(), 2);
+  cards = state.GetCardsValue(0);
+  std::vector<CardStateType> cardStates = state.GetCardsState(0);
+  SPIEL_CHECK_EQ(cards.size(), 2);
   for (int c = 0; c < 2; ++c) {
-    SPIEL_CHECK_GE((int)state.players_.at(0).cards.at(c).value, (int)CardType::kDuke);
-    SPIEL_CHECK_EQ((int)state.players_.at(0).cards.at(c).state, (int)CardStateType::kFaceDown);
+    SPIEL_CHECK_GE((int)cards.at(c), (int)CardType::kDuke);
+    SPIEL_CHECK_EQ((int)cardStates.at(c), (int)CardStateType::kFaceDown);
   }
   
   SPIEL_CHECK_FALSE(state.IsTerminal());
@@ -320,8 +327,8 @@ void CoupStealTest(CoupState& state) {
   SPIEL_CHECK_TRUE(legal == correct);
   state.ApplyAction((Action)ActionType::kPassSteal);
 
-  SPIEL_CHECK_EQ(state.players_.at(0).coins, 3);
-  SPIEL_CHECK_EQ(state.players_.at(1).coins, 0);
+  SPIEL_CHECK_EQ(state.GetCoins(0), 3);
+  SPIEL_CHECK_EQ(state.GetCoins(1), 0);
   SPIEL_CHECK_EQ(state.CurrentPlayer(), 1);
   SPIEL_CHECK_FALSE(state.IsTerminal());
   std::vector<double> rewards = state.Rewards();
@@ -355,10 +362,10 @@ void CoupBlockStealTest(CoupState& state) {
   SPIEL_CHECK_TRUE(legal == correct);
   state.ApplyAction((Action)ActionType::kLoseCard1);
 
-  SPIEL_CHECK_EQ(state.players_.at(0).coins, 1);
-  SPIEL_CHECK_EQ(state.players_.at(1).coins, 2);
+  SPIEL_CHECK_EQ(state.GetCoins(0), 1);
+  SPIEL_CHECK_EQ(state.GetCoins(1), 2);
   SPIEL_CHECK_EQ(state.CurrentPlayer(), 1);
-  SPIEL_CHECK_EQ((int)state.players_.at(0).cards.at(0).state, (int)CardStateType::kFaceUp);
+  SPIEL_CHECK_EQ((int)state.GetCardsState(0).at(0), (int)CardStateType::kFaceUp);
   SPIEL_CHECK_FALSE(state.IsTerminal());
   std::vector<double> rewards = state.Rewards();
   std::vector<double> returns = state.Returns();
@@ -390,7 +397,7 @@ void CoupBlockAssassinateTest(CoupState& state) {
   SPIEL_CHECK_TRUE(legal == correct);
   state.ApplyAction((Action)ActionType::kChallengeAssassinateBlock);
 
-  SPIEL_CHECK_EQ(state.players_.at(0).coins, 0);
+  SPIEL_CHECK_EQ(state.GetCoins(0), 0);
   SPIEL_CHECK_EQ(state.CurrentPlayer(), 0);
   legal = state.LegalActions();
   correct = {(Action)ActionType::kLoseCard1,
@@ -422,7 +429,7 @@ void CoupTaxTest(CoupState& state) {
   SPIEL_CHECK_TRUE(legal == correct);
   state.ApplyAction((Action)ActionType::kPassTax);
 
-  SPIEL_CHECK_EQ(state.players_.at(0).coins, 4);
+  SPIEL_CHECK_EQ(state.GetCoins(0), 4);
   SPIEL_CHECK_EQ(state.CurrentPlayer(), 1);
   SPIEL_CHECK_FALSE(state.IsTerminal());
   std::vector<double> rewards = state.Rewards();
@@ -450,7 +457,7 @@ void CoupChallengeBlockForeignAidTest(CoupState& state) {
   SPIEL_CHECK_TRUE(legal == correct);
   state.ApplyAction((Action)ActionType::kChallengeFABlock);
 
-  SPIEL_CHECK_EQ(state.players_.at(0).coins, 1);
+  SPIEL_CHECK_EQ(state.GetCoins(0), 1);
   SPIEL_CHECK_EQ(state.CurrentPlayer(), 0);
   legal = state.LegalActions();
   correct = {(Action)ActionType::kLoseCard1,

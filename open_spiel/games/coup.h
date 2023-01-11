@@ -149,6 +149,12 @@ class CoupState : public State {
     return {action};
   }
 
+  // Convenience accessors
+  std::vector<CardType> GetCardsValue(Player player) const;
+  std::vector<CardStateType> GetCardsState(Player player) const;
+  int GetCoins(Player player) const;
+  Action GetLastAction(Player player) const;
+
  protected:
   // The meaning of `action_id` varies:
   // - At decision nodes, one of ActionType.
@@ -224,8 +230,7 @@ class CoupGame : public Game {
   int MaxGameLength() const override { return 300; }
   // Given MaxGameLength, overestimating chance nodes
   int MaxChanceNodesInHistory() const override { return 200; }
-  
-  //Serialize? ToString?
+
   std::string ActionToString(Player player, Action action) const override;
   // New Observation API
   std::shared_ptr<Observer> MakeObserver(
