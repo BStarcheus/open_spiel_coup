@@ -399,6 +399,9 @@ void CoupBlockStealTest() {
                                  (Action)ActionType::kChallengeStealBlock};
   SPIEL_CHECK_TRUE(legal == correct);
   state->ApplyAction((Action)ActionType::kChallengeStealBlock);
+  // P2 had a Captain, so P2 showed it to prove it, and gets a new card
+  SPIEL_CHECK_EQ(state->CurrentPlayer(), -1);
+  state->ApplyAction((Action)CardType::kCaptain);
   SPIEL_CHECK_EQ(state->CurrentPlayer(), 0);
   legal = state->LegalActions();
   correct = {(Action)ActionType::kLoseCard1,
@@ -444,6 +447,10 @@ void CoupBlockAssassinateTest() {
                                  (Action)ActionType::kChallengeAssassinateBlock};
   SPIEL_CHECK_TRUE(legal == correct);
   state->ApplyAction((Action)ActionType::kChallengeAssassinateBlock);
+
+  // P2 had a Contessa, so P2 showed it to prove it, and gets a new card
+  SPIEL_CHECK_EQ(state->CurrentPlayer(), -1);
+  state->ApplyAction((Action)CardType::kContessa);
 
   SPIEL_CHECK_EQ(state->GetCoins(0), 0);
   SPIEL_CHECK_EQ(state->CurrentPlayer(), 0);
@@ -512,6 +519,10 @@ void CoupChallengeBlockForeignAidTest() {
                                  (Action)ActionType::kChallengeFABlock};
   SPIEL_CHECK_TRUE(legal == correct);
   state->ApplyAction((Action)ActionType::kChallengeFABlock);
+
+  // P2 had a Duke, so P2 showed it to prove it, and gets a new card
+  SPIEL_CHECK_EQ(state->CurrentPlayer(), -1);
+  state->ApplyAction((Action)CardType::kDuke);
 
   SPIEL_CHECK_EQ(state->GetCoins(0), 1);
   SPIEL_CHECK_EQ(state->CurrentPlayer(), 0);
