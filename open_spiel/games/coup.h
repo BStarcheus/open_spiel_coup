@@ -236,16 +236,6 @@ class CoupGame : public Game {
   std::shared_ptr<CoupObserver> default_observer_;
   std::shared_ptr<CoupObserver> info_state_observer_;
 };
-
-// // Returns policy that always folds.
-// TabularPolicy GetAlwaysFoldPolicy(const Game& game);
-
-// // Returns policy that always calls.
-// TabularPolicy GetAlwaysCallPolicy(const Game& game);
-
-// // Returns policy that always raises.
-// TabularPolicy GetAlwaysRaisePolicy(const Game& game);
-
 }  // namespace coup
 }  // namespace open_spiel
 
