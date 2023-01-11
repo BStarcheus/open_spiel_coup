@@ -41,8 +41,8 @@ void BasicCoupTests() {
 // General game and action tests
 void CoupGameStartTest() {
   std::shared_ptr<const Game> game = LoadGame("coup");
-  std::unique_ptr<State> state = game->NewInitialState();
-  CoupState* state = static_cast<CoupState*>(state.get());
+  std::unique_ptr<State> tempState = game->NewInitialState();
+  CoupState* state = static_cast<CoupState*>(tempState.get());
 
   SPIEL_CHECK_EQ(state->CurrentPlayer(), kChancePlayerId);
   // Deal cards
@@ -75,8 +75,8 @@ void CoupGameStartTest() {
 
 void CoupIncomeTest() {
   std::shared_ptr<const Game> game = LoadGame("coup");
-  std::unique_ptr<State> state = game->NewInitialState();
-  CoupState* state = static_cast<CoupState*>(state.get());
+  std::unique_ptr<State> tempState = game->NewInitialState();
+  CoupState* state = static_cast<CoupState*>(tempState.get());
 
   // Deal cards
   state->ApplyAction((Action)CardType::kAmbassador);
@@ -99,8 +99,8 @@ void CoupIncomeTest() {
 
 void CoupPassForeignAidTest() {
   std::shared_ptr<const Game> game = LoadGame("coup");
-  std::unique_ptr<State> state = game->NewInitialState();
-  CoupState* state = static_cast<CoupState*>(state.get());
+  std::unique_ptr<State> tempState = game->NewInitialState();
+  CoupState* state = static_cast<CoupState*>(tempState.get());
 
   // Deal cards
   state->ApplyAction((Action)CardType::kAmbassador);
@@ -128,8 +128,8 @@ void CoupPassForeignAidTest() {
 
 void CoupBlockForeignAidTest() {
   std::shared_ptr<const Game> game = LoadGame("coup");
-  std::unique_ptr<State> state = game->NewInitialState();
-  CoupState* state = static_cast<CoupState*>(state.get());
+  std::unique_ptr<State> tempState = game->NewInitialState();
+  CoupState* state = static_cast<CoupState*>(tempState.get());
 
   // Deal cards
   state->ApplyAction((Action)CardType::kAmbassador);
@@ -158,8 +158,8 @@ void CoupBlockForeignAidTest() {
 
 void CoupChallengeForeignAidTest() {
   std::shared_ptr<const Game> game = LoadGame("coup");
-  std::unique_ptr<State> state = game->NewInitialState();
-  CoupState* state = static_cast<CoupState*>(state.get());
+  std::unique_ptr<State> tempState = game->NewInitialState();
+  CoupState* state = static_cast<CoupState*>(tempState.get());
 
   // Deal cards
   state->ApplyAction((Action)CardType::kDuke);
@@ -190,8 +190,8 @@ void CoupChallengeForeignAidTest() {
 
 void CoupLoseCardTest() {
   std::shared_ptr<const Game> game = LoadGame("coup");
-  std::unique_ptr<State> state = game->NewInitialState();
-  CoupState* state = static_cast<CoupState*>(state.get());
+  std::unique_ptr<State> tempState = game->NewInitialState();
+  CoupState* state = static_cast<CoupState*>(tempState.get());
 
   // Deal cards
   state->ApplyAction((Action)CardType::kAmbassador);
@@ -226,8 +226,8 @@ void CoupLoseCardTest() {
 // Assassin
 void CoupAssassinateTest() {
   std::shared_ptr<const Game> game = LoadGame("coup");
-  std::unique_ptr<State> state = game->NewInitialState();
-  CoupState* state = static_cast<CoupState*>(state.get());
+  std::unique_ptr<State> tempState = game->NewInitialState();
+  CoupState* state = static_cast<CoupState*>(tempState.get());
 
   // Deal cards
   state->ApplyAction((Action)CardType::kAssassin);
@@ -264,8 +264,8 @@ void CoupAssassinateTest() {
 
 void CoupDoubleAssassinateTest() {
   std::shared_ptr<const Game> game = LoadGame("coup");
-  std::unique_ptr<State> state = game->NewInitialState();
-  CoupState* state = static_cast<CoupState*>(state.get());
+  std::unique_ptr<State> tempState = game->NewInitialState();
+  CoupState* state = static_cast<CoupState*>(tempState.get());
 
   // Deal cards
   state->ApplyAction((Action)CardType::kAssassin);
@@ -294,8 +294,8 @@ void CoupDoubleAssassinateTest() {
 // Ambassador
 void CoupExchangeTest() {
   std::shared_ptr<const Game> game = LoadGame("coup");
-  std::unique_ptr<State> state = game->NewInitialState();
-  CoupState* state = static_cast<CoupState*>(state.get());
+  std::unique_ptr<State> tempState = game->NewInitialState();
+  CoupState* state = static_cast<CoupState*>(tempState.get());
 
   // Deal cards
   state->ApplyAction((Action)CardType::kAmbassador);
@@ -348,8 +348,8 @@ void CoupExchangeTest() {
 // Captain
 void CoupStealTest() {
   std::shared_ptr<const Game> game = LoadGame("coup");
-  std::unique_ptr<State> state = game->NewInitialState();
-  CoupState* state = static_cast<CoupState*>(state.get());
+  std::unique_ptr<State> tempState = game->NewInitialState();
+  CoupState* state = static_cast<CoupState*>(tempState.get());
 
   // Deal cards
   state->ApplyAction((Action)CardType::kCaptain);
@@ -381,8 +381,8 @@ void CoupStealTest() {
 
 void CoupBlockStealTest() {
   std::shared_ptr<const Game> game = LoadGame("coup");
-  std::unique_ptr<State> state = game->NewInitialState();
-  CoupState* state = static_cast<CoupState*>(state.get());
+  std::unique_ptr<State> tempState = game->NewInitialState();
+  CoupState* state = static_cast<CoupState*>(tempState.get());
 
   // Deal cards
   state->ApplyAction((Action)CardType::kCaptain);
@@ -422,8 +422,8 @@ void CoupBlockStealTest() {
 // Contessa
 void CoupBlockAssassinateTest() {
   std::shared_ptr<const Game> game = LoadGame("coup");
-  std::unique_ptr<State> state = game->NewInitialState();
-  CoupState* state = static_cast<CoupState*>(state.get());
+  std::unique_ptr<State> tempState = game->NewInitialState();
+  CoupState* state = static_cast<CoupState*>(tempState.get());
 
   // Deal cards
   state->ApplyAction((Action)CardType::kAssassin);
@@ -463,8 +463,8 @@ void CoupBlockAssassinateTest() {
 // Duke
 void CoupTaxTest() {
   std::shared_ptr<const Game> game = LoadGame("coup");
-  std::unique_ptr<State> state = game->NewInitialState();
-  CoupState* state = static_cast<CoupState*>(state.get());
+  std::unique_ptr<State> tempState = game->NewInitialState();
+  CoupState* state = static_cast<CoupState*>(tempState.get());
 
   // Deal cards
   state->ApplyAction((Action)CardType::kAmbassador);
@@ -494,8 +494,8 @@ void CoupTaxTest() {
 
 void CoupChallengeBlockForeignAidTest() {
   std::shared_ptr<const Game> game = LoadGame("coup");
-  std::unique_ptr<State> state = game->NewInitialState();
-  CoupState* state = static_cast<CoupState*>(state.get());
+  std::unique_ptr<State> tempState = game->NewInitialState();
+  CoupState* state = static_cast<CoupState*>(tempState.get());
 
   // Deal cards
   state->ApplyAction((Action)CardType::kAmbassador);
