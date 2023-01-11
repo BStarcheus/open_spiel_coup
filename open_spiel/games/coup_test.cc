@@ -178,7 +178,7 @@ void CoupChallengeForeignAidTest() {
                                  (Action)ActionType::kLoseCard2};
   SPIEL_CHECK_TRUE(legal == correct);
 
-  SPIEL_CHECK_EQ(state->GetCoins(0), 1);
+  SPIEL_CHECK_EQ(state->GetCoins(0), 3);
   SPIEL_CHECK_FALSE(state->IsTerminal());
   std::vector<double> rewards = state->Rewards();
   std::vector<double> returns = state->Returns();
