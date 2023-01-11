@@ -124,8 +124,8 @@ struct CoupPlayer {
 
 class CoupState : public State {
  public:
-  CoupState(const CoupState&) = default;
   CoupState(std::shared_ptr<const Game> game);
+  CoupState(const CoupState&) = default;
 
   Player CurrentPlayer() const override;
   std::string ActionToString(Player player, Action move) const override;
