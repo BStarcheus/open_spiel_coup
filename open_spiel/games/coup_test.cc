@@ -441,7 +441,7 @@ void CoupBlockAssassinateTest() {
   state->ApplyAction((Action)ActionType::kAssassinate);
   state->ApplyAction((Action)ActionType::kBlockAssassinate);
 
-  SPIEL_CHECK_EQ(state->CurrentPlayer(), 1);
+  SPIEL_CHECK_EQ(state->CurrentPlayer(), 0);
   std::vector<Action> legal = state->LegalActions();
   std::vector<Action> correct = {(Action)ActionType::kPassAssassinateBlock,
                                  (Action)ActionType::kChallengeAssassinateBlock};
