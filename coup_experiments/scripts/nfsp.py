@@ -111,8 +111,7 @@ def main(unused_argv):
   game = FLAGS.game_name
   num_players = FLAGS.num_players
 
-  env_configs = {"players": num_players}
-  env = rl_environment.Environment(game, **env_configs)
+  env = rl_environment.Environment(game)
   info_state_size = env.observation_spec()["info_state"][0]
   num_actions = env.action_spec()["num_actions"]
 
