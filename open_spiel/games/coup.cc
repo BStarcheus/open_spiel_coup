@@ -1035,6 +1035,9 @@ std::string CoupState::ToString() const {
 }
 
 bool CoupState::IsTerminal() const {
+  if (move_number_ > game_->MaxGameLength()) {
+    return true;
+  }
   int numPlayersAlive = 0;
   for (auto &p: players_) {
     if (p.cards.size() < 2) {
