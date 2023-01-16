@@ -226,11 +226,12 @@ class CoupGame : public Game {
 
   // If neither player is playing to win, could be infinite.
   // Unlike chess, no rules on repeated moves.
-  // Could continue to steal from eachother, or exchange with deck forever.
-  // Choosing arbitrary large value.
-  int MaxGameLength() const override { return 300; }
-  // Given MaxGameLength, overestimating chance nodes
-  int MaxChanceNodesInHistory() const override { return 200; }
+  // Could continue to steal from eachother, or exchange with deck forever,
+  // but we don't want to allow those games.
+  // Choosing game length based on possible game where
+  // P2 always exchanging, P1 always taking income unless forced to Coup.
+  int MaxGameLength() const override { return 90; }
+  int MaxChanceNodesInHistory() const override { return 45; }
 
   std::string ActionToString(Player player, Action action) const override;
   // New Observation API
