@@ -153,17 +153,17 @@ def main(unused_argv):
       if (ep + 1) % FLAGS.eval_every == 0:
         losses = [agent.loss for agent in agents]
         logging.info("Losses: %s", losses)
-        if FLAGS.evaluation_metric == "exploitability":
-          # Avg exploitability is implemented only for 2 players constant-sum
-          # games, use nash_conv otherwise.
-          expl = exploitability.exploitability(env.game, joint_avg_policy)
-          logging.info("[%s] Exploitability AVG %s", ep + 1, expl)
-        elif FLAGS.evaluation_metric == "nash_conv":
-          nash_conv = exploitability.nash_conv(env.game, joint_avg_policy)
-          logging.info("[%s] NashConv %s", ep + 1, nash_conv)
-        else:
-          raise ValueError(" ".join(("Invalid evaluation metric, choose from",
-                                     "'exploitability', 'nash_conv'.")))
+        # if FLAGS.evaluation_metric == "exploitability":
+        #   # Avg exploitability is implemented only for 2 players constant-sum
+        #   # games, use nash_conv otherwise.
+        #   expl = exploitability.exploitability(env.game, joint_avg_policy)
+        #   logging.info("[%s] Exploitability AVG %s", ep + 1, expl)
+        # elif FLAGS.evaluation_metric == "nash_conv":
+        #   nash_conv = exploitability.nash_conv(env.game, joint_avg_policy)
+        #   logging.info("[%s] NashConv %s", ep + 1, nash_conv)
+        # else:
+        #   raise ValueError(" ".join(("Invalid evaluation metric, choose from",
+        #                              "'exploitability', 'nash_conv'.")))
         if FLAGS.use_checkpoints:
           for agent in agents:
             agent.save(FLAGS.checkpoint_dir)
