@@ -156,7 +156,7 @@ def main(unused_argv):
         losses = [agent.loss for agent in agents]
         logging.info("Losses: %s", losses)
 
-        rl_resp(exploitee=agents,
+        rl_resp(exploitee=joint_avg_policy,
                 num_train_episodes=10000)
 
         # if FLAGS.evaluation_metric == "exploitability":

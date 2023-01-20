@@ -28,8 +28,10 @@ import tensorflow.compat.v1 as tf
 
 from open_spiel.python import rl_agent
 from open_spiel.python import rl_environment
+from open_spiel.python import policy
 from open_spiel.python.algorithms import dqn
 from open_spiel.python.algorithms import random_agent
+from open_spiel.python.bots import policy as pol
 
 if __name__ == "__main__":
   FLAGS = flags.FLAGS
@@ -174,9 +176,13 @@ def rl_resp(game="coup", exploitee="random", seed=0, window_size=30,
   num_actions = env.action_spec()["num_actions"]
 
   # Exploitee agents
-  if not isinstance(exploitee, str):
-    # Called rl_resp from algorithm directly, and passed in agents
-    exploitee_agents = exploitee
+  if isinstance(exploitee, policy.Policy):
+    # Called rl_resp from algorithm directly, and passed in policy.
+    # Make agents that use the policy
+    exploitee_agents = [
+        pol.PolicyBot(idx, np.random.RandomState(seed), exploitee)
+        for idx in range(num_players)
+    ]
   elif exploitee == "first":
     exploitee_agents = [
         FirstActionAgent(idx, num_actions) for idx in range(num_players)
@@ -184,7 +190,6 @@ def rl_resp(game="coup", exploitee="random", seed=0, window_size=30,
   elif exploitee == "random":
     exploitee_agents = [
         random_agent.RandomAgent(player_id=idx, num_actions=num_actions)
-        # FirstActionAgent(player_id=idx, num_actions=num_actions)
         for idx in range(num_players)
     ]
   else:
