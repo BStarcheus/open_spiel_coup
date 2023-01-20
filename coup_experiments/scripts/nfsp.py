@@ -24,7 +24,7 @@ from open_spiel.python import rl_environment
 from open_spiel.python.algorithms import exploitability
 from open_spiel.python.algorithms import nfsp
 
-from rl_response import rl_resp
+from coup_experiments.algorithms.rl_response import rl_resp
 
 FLAGS = flags.FLAGS
 

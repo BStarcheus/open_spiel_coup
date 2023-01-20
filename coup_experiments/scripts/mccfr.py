@@ -22,7 +22,7 @@ from open_spiel.python.algorithms import external_sampling_mccfr as external_mcc
 from open_spiel.python.algorithms import outcome_sampling_mccfr as outcome_mccfr
 import pyspiel
 
-from rl_response import rl_resp
+from coup_experiments.algorithms.rl_response import rl_resp
 
 FLAGS = flags.FLAGS
 

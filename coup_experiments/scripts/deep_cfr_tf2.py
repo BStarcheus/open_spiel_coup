@@ -24,7 +24,7 @@ from open_spiel.python.algorithms import expected_game_score
 from open_spiel.python.algorithms import exploitability
 import pyspiel
 
-from rl_response import rl_resp
+from coup_experiments.algorithms.rl_response import rl_resp
 
 FLAGS = flags.FLAGS
 
