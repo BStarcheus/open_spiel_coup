@@ -24,6 +24,8 @@ from open_spiel.python import rl_environment
 from open_spiel.python.algorithms import exploitability
 from open_spiel.python.algorithms import nfsp
 
+from rl_response import rl_resp
+
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string("game_name", "coup",
@@ -153,6 +155,9 @@ def main(unused_argv):
       if (ep + 1) % FLAGS.eval_every == 0:
         losses = [agent.loss for agent in agents]
         logging.info("Losses: %s", losses)
+
+        rl_resp(exploitee=agents)
+
         # if FLAGS.evaluation_metric == "exploitability":
         #   # Avg exploitability is implemented only for 2 players constant-sum
         #   # games, use nash_conv otherwise.
