@@ -22,6 +22,8 @@ from open_spiel.python.algorithms import external_sampling_mccfr as external_mcc
 from open_spiel.python.algorithms import outcome_sampling_mccfr as outcome_mccfr
 import pyspiel
 
+from rl_response import rl_resp
+
 FLAGS = flags.FLAGS
 
 flags.DEFINE_enum(
@@ -45,7 +47,9 @@ def main(_):
     cfr_solver = outcome_mccfr.OutcomeSamplingSolver(game)
   for i in range(FLAGS.iterations):
     cfr_solver.iteration()
-    # if i % FLAGS.print_freq == 0:
+    if i % FLAGS.print_freq == 0:
+      rl_resp(exploitee=cfr_solver.average_policy(),
+              num_train_episodes=10000)
     #   conv = exploitability.nash_conv(game, cfr_solver.average_policy())
     #   print("Iteration {} exploitability {}".format(i, conv))
 
