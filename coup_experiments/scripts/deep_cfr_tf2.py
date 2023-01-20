@@ -24,6 +24,8 @@ from open_spiel.python.algorithms import expected_game_score
 from open_spiel.python.algorithms import exploitability
 import pyspiel
 
+from rl_response import rl_resp
+
 FLAGS = flags.FLAGS
 
 flags.DEFINE_integer("num_iterations", 100, "Number of iterations")
@@ -62,11 +64,14 @@ def main(unused_argv):
   average_policy = policy.tabular_policy_from_callable(
       game, deep_cfr_solver.action_probabilities)
 
-  conv = exploitability.nash_conv(game, average_policy)
-  logging.info("Deep CFR in '%s' - NashConv: %s", FLAGS.game_name, conv)
+  rl_resp(exploitee=average_policy,
+          num_train_episodes=10000)
+  # conv = exploitability.nash_conv(game, average_policy)
+  # logging.info("Deep CFR in '%s' - NashConv: %s", FLAGS.game_name, conv)
 
   average_policy_values = expected_game_score.policy_value(
-      game.new_initial_state(), [average_policy] * 2)
+      game.new_initial_state(), [average_policy] * 2,
+      probability_threshold=0.5)
   print("Computed player 0 value: {}".format(average_policy_values[0]))
   print("Computed player 1 value: {}".format(average_policy_values[1]))
 
