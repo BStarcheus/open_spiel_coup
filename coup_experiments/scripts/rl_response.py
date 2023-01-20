@@ -31,36 +31,37 @@ from open_spiel.python import rl_environment
 from open_spiel.python.algorithms import dqn
 from open_spiel.python.algorithms import random_agent
 
-FLAGS = flags.FLAGS
+if __name__ == "__main__":
+  FLAGS = flags.FLAGS
 
-# Training parameters
-flags.DEFINE_string("checkpoint_dir", "/tmp/dqn_test",
-                    "Directory to save/load the agent models.")
-flags.DEFINE_integer(
-    "save_every", int(1e4),
-    "Episode frequency at which the DQN agent models are saved.")
-flags.DEFINE_integer("num_train_episodes", int(1e6),
-                     "Number of training episodes.")
-flags.DEFINE_integer(
-    "eval_every", 1000,
-    "Episode frequency at which the DQN agents are evaluated.")
-flags.DEFINE_integer("eval_episodes", 1000,
-                     "How many episodes to run per eval.")
+  # Training parameters
+  flags.DEFINE_string("checkpoint_dir", "/tmp/dqn_test",
+                      "Directory to save/load the agent models.")
+  flags.DEFINE_integer(
+      "save_every", int(1e4),
+      "Episode frequency at which the DQN agent models are saved.")
+  flags.DEFINE_integer("num_train_episodes", int(1e6),
+                      "Number of training episodes.")
+  flags.DEFINE_integer(
+      "eval_every", 1000,
+      "Episode frequency at which the DQN agents are evaluated.")
+  flags.DEFINE_integer("eval_episodes", 1000,
+                      "How many episodes to run per eval.")
 
-# DQN model hyper-parameters
-flags.DEFINE_list("hidden_layers_sizes", [64, 64, 64],
-                  "Number of hidden units in the Q-Network MLP.")
-flags.DEFINE_integer("replay_buffer_capacity", int(1e5),
-                     "Size of the replay buffer.")
-flags.DEFINE_integer("batch_size", 32,
-                     "Number of transitions to sample at each learning step.")
+  # DQN model hyper-parameters
+  flags.DEFINE_list("hidden_layers_sizes", [64, 64, 64],
+                    "Number of hidden units in the Q-Network MLP.")
+  flags.DEFINE_integer("replay_buffer_capacity", int(1e5),
+                      "Size of the replay buffer.")
+  flags.DEFINE_integer("batch_size", 32,
+                      "Number of transitions to sample at each learning step.")
 
 
-# Main algorithm parameters
-flags.DEFINE_integer("seed", 0, "Seed to use for everything")
-flags.DEFINE_integer("window_size", 30, "Size of window for rolling average")
-flags.DEFINE_string("game", "coup", "Game string")
-flags.DEFINE_string("exploitee", "random", "Exploitee (random | first)")
+  # Main algorithm parameters
+  flags.DEFINE_integer("seed", 0, "Seed to use for everything")
+  flags.DEFINE_integer("window_size", 30, "Size of window for rolling average")
+  flags.DEFINE_string("game", "coup", "Game string")
+  flags.DEFINE_string("exploitee", "random", "Exploitee (random | first)")
 
 
 def eval_against_fixed_bots(env, trained_agents, fixed_agents, num_episodes):
@@ -159,9 +160,9 @@ def rl_resp(game="coup", exploitee="random", seed=0, window_size=30,
             checkpoint_dir="/tmp/dqn_test", save_every=10000,
             num_train_episodes=1000000, eval_every=1000, eval_episodes=1000,
             # DQN model hyper-parameters
-            replay_buffer_capacity=100000, batch_size=32, hidden_layer_sizes=None):
-  if hidden_layer_sizes is None:
-    hidden_layer_sizes = [64,64,64]
+            replay_buffer_capacity=100000, batch_size=32, hidden_layers_sizes=None):
+  if hidden_layers_sizes is None:
+    hidden_layers_sizes = [64,64,64]
 
   np.random.seed(seed)
   tf.random.set_random_seed(seed)
@@ -171,8 +172,6 @@ def rl_resp(game="coup", exploitee="random", seed=0, window_size=30,
   env = rl_environment.Environment(game, include_full_state=True)
   info_state_size = env.observation_spec()["info_state"][0]
   num_actions = env.action_spec()["num_actions"]
-
-  # TODO use existing policy to create agent to be evaluated
 
   # Exploitee agents
   if not isinstance(exploitee, str):
@@ -255,7 +254,7 @@ def main(_):
   rl_resp(FLAGS.game, FLAGS.exploitee, FLAGS.seed, FLAGS.window_size,
           FLAGS.checkpoint_dir, FLAGS.save_every, FLAGS.num_train_episodes,
           FLAGS.eval_every, FLAGS.eval_episodes, FLAGS.replay_buffer_capacity,
-          FLAGS.batch_size, FLAGS.hidden_layer_sizes)
+          FLAGS.batch_size, FLAGS.hidden_layers_sizes)
 
 if __name__ == "__main__":
   app.run(main)

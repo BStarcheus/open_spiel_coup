@@ -32,7 +32,7 @@ flags.DEFINE_string("game_name", "coup",
                     "Name of the game.")
 flags.DEFINE_integer("num_players", 2,
                      "Number of players.")
-flags.DEFINE_integer("num_train_episodes", int(20e6),
+flags.DEFINE_integer("num_train_episodes", 100000,#int(20e6),
                      "Number of training episodes.")
 flags.DEFINE_integer("eval_every", 10000,
                      "Episode frequency at which the agents are evaluated.")
@@ -156,7 +156,8 @@ def main(unused_argv):
         losses = [agent.loss for agent in agents]
         logging.info("Losses: %s", losses)
 
-        rl_resp(exploitee=agents)
+        rl_resp(exploitee=agents,
+                num_train_episodes=10000)
 
         # if FLAGS.evaluation_metric == "exploitability":
         #   # Avg exploitability is implemented only for 2 players constant-sum
