@@ -31,7 +31,6 @@ from open_spiel.python import rl_environment
 from open_spiel.python import policy
 from open_spiel.python.algorithms import dqn
 from open_spiel.python.algorithms import random_agent
-from open_spiel.python.bots import policy as pol
 
 if __name__ == "__main__":
   FLAGS = flags.FLAGS
@@ -114,9 +113,26 @@ def create_training_agents(num_players, sess, num_actions, info_state_size,
   ]
 
 
-class FirstActionAgent(rl_agent.AbstractAgent):
-  """An example agent class."""
+class PolicyAgent(rl_agent.AbstractAgent):
+  def __init__(self, player_id, policy, env, name="policy_agent"):
+    self._player_id = player_id
+    self._policy = policy
+    self._env = env
 
+  def step(self, time_step, is_evaluation=False):
+    # If it is the end of the episode, don't select an action.
+    if time_step.last():
+      return
+
+    # Pick an action based on policy.
+    cur_legal_actions = time_step.observations["legal_actions"][self._player_id]
+    policy = self._policy.action_probabilities(self._env.get_state(), self._player_id)
+    probs = list(policy.values())
+    action = np.random.choice(cur_legal_actions, p=probs)
+    return rl_agent.StepOutput(action=action, probs=probs)
+
+
+class FirstActionAgent(rl_agent.AbstractAgent):
   def __init__(self, player_id, num_actions, name="first_action_agent"):
     assert num_actions > 0
     self._player_id = player_id
@@ -180,7 +196,7 @@ def rl_resp(game="coup", exploitee="random", seed=0, window_size=30,
     # Called rl_resp from algorithm directly, and passed in policy.
     # Make agents that use the policy
     exploitee_agents = [
-        pol.PolicyBot(idx, np.random.RandomState(seed), exploitee)
+        PolicyAgent(idx, exploitee, env)
         for idx in range(num_players)
     ]
   elif exploitee == "first":
