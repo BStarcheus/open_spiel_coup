@@ -50,7 +50,8 @@ def main(unused_argv):
       advantage_network_train_steps=500,
       reinitialize_advantage_networks=True,
       infer_device="gpu",
-      train_device="gpu")
+      train_device="gpu",
+      sampling_method='outcome')
   _, advantage_losses, policy_loss = deep_cfr_solver.solve()
   for player, losses in advantage_losses.items():
     logging.info("Advantage for player %d: %s", player,

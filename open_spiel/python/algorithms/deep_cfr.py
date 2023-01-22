@@ -126,7 +126,9 @@ class DeepCFRSolver(policy.Policy):
                memory_capacity: int = int(1e6),
                policy_network_train_steps: int = 1,
                advantage_network_train_steps: int = 1,
-               reinitialize_advantage_networks: bool = True):
+               reinitialize_advantage_networks: bool = True,
+               sampling_method='external',
+               outcome_samp_expl=0.6):
     """Initialize the Deep CFR algorithm.
 
     Args:
@@ -148,6 +150,10 @@ class DeepCFRSolver(policy.Policy):
         (per iteration).
       reinitialize_advantage_networks: Whether to re-initialize the
         advantage network before training on each iteration.
+      sampling_method: Traversal sampling method, external or outcome
+      outcome_samp_expl: Epsilon exploration factor for outcome sampling.
+        When sampling episodes, the updating player will sample according to
+        expl * uniform + (1 - expl) * current_policy.
     """
     all_players = list(range(game.num_players()))
     super(DeepCFRSolver, self).__init__(game, all_players)
@@ -170,6 +176,11 @@ class DeepCFRSolver(policy.Policy):
     self._num_actions = game.num_distinct_actions()
     self._iteration = 1
     self._environment_steps = 0
+
+    if sampling_method not in ['external', 'outcome']:
+      raise ValueError(f'Unknown sampling method \'{sampling_method}\'.')
+    self._sampling_method = sampling_method
+    self._expl = outcome_samp_expl
 
     # Create required TensorFlow placeholders to perform the Q-network updates.
     self._info_state_ph = tf.placeholder(
@@ -304,9 +315,23 @@ class DeepCFRSolver(policy.Policy):
       sampled_regret = collections.defaultdict(float)
       # Update the policy over the info set & actions via regret matching.
       _, strategy = self._sample_action_from_advantage(state, player)
-      for action in state.legal_actions():
-        expected_payoff[action] = self._traverse_game_tree(
-            state.child(action), player)
+      
+      if self._sampling_method == 'external':
+        for action in state.legal_actions():
+          expected_payoff[action] = self._traverse_game_tree(
+              state.child(action), player)
+      elif self._sampling_method == 'outcome':
+        legal_actions = state.legal_actions()
+        num_legal_actions = len(legal_actions)
+        uniform_policy = (
+          np.array(state.legal_actions_mask(player)) / num_legal_actions)
+        probs = (self._expl * uniform_policy + 
+                    (1.0 - self._expl) * np.array(strategy))
+        probs /= probs.sum()
+        sampled_action = np.random.choice(range(self._num_actions), p=probs)
+        expected_payoff[sampled_action] = self._traverse_game_tree(
+              state.child(sampled_action), player)
+     
       cfv = 0
       for a_ in state.legal_actions():
         cfv += strategy[a_] * expected_payoff[a_]

@@ -273,7 +273,9 @@ class DeepCFRSolver(policy.Policy):
                save_advantage_networks: str = None,
                save_strategy_memories: str = None,
                infer_device='cpu',
-               train_device='cpu'):
+               train_device='cpu',
+               sampling_method='external',
+               outcome_samp_expl=0.6):
     """Initialize the Deep CFR algorithm.
 
     Args:
@@ -302,6 +304,10 @@ class DeepCFRSolver(policy.Policy):
         Format is anything accepted by tf.device
       train_device: device used for TF-operations in the NN training steps.
         Format is anything accepted by tf.device
+      sampling_method: Traversal sampling method, external or outcome
+      outcome_samp_expl: Epsilon exploration factor for outcome sampling.
+        When sampling episodes, the updating player will sample according to
+        expl * uniform + (1 - expl) * current_policy.
     """
     all_players = list(range(game.num_players()))
     super(DeepCFRSolver, self).__init__(game, all_players)
@@ -330,6 +336,11 @@ class DeepCFRSolver(policy.Policy):
     self._train_device = train_device
     self._memories_tfrecordpath = None
     self._memories_tfrecordfile = None
+
+    if sampling_method not in ['external', 'outcome']:
+      raise ValueError(f'Unknown sampling method \'{sampling_method}\'.')
+    self._sampling_method = sampling_method
+    self._expl = outcome_samp_expl
 
     # Initialize file save locations
     if self._save_advantage_networks:
@@ -541,7 +552,7 @@ class DeepCFRSolver(policy.Policy):
             tups['legal_actions'])
 
   def _traverse_game_tree(self, state, player):
-    """Performs a traversal of the game tree using external sampling.
+    """Performs a traversal of the game tree.
 
     Over a traversal the advantage and strategy memories are populated with
     computed advantage values and matched regrets respectively.
@@ -564,9 +575,23 @@ class DeepCFRSolver(policy.Policy):
       # Update the policy over the info set & actions via regret matching.
       _, strategy = self._sample_action_from_advantage(state, player)
       exp_payoff = 0 * strategy
-      for action in state.legal_actions():
-        exp_payoff[action] = self._traverse_game_tree(
-            state.child(action), player)
+
+      if self._sampling_method == 'external':
+        for action in state.legal_actions():
+          exp_payoff[action] = self._traverse_game_tree(
+              state.child(action), player)
+      elif self._sampling_method == 'outcome':
+        legal_actions = state.legal_actions()
+        num_legal_actions = len(legal_actions)
+        uniform_policy = (
+          np.array(state.legal_actions_mask(player)) / num_legal_actions)
+        probs = (self._expl * uniform_policy + 
+                    (1.0 - self._expl) * np.array(strategy))
+        probs /= probs.sum()
+        sampled_action = np.random.choice(range(self._num_actions), p=probs)
+        exp_payoff[sampled_action] = self._traverse_game_tree(
+              state.child(sampled_action), player)
+
       ev = np.sum(exp_payoff * strategy)
       samp_regret = (exp_payoff - ev) * state.legal_actions_mask(player)
       self._advantage_memories[player].add(
