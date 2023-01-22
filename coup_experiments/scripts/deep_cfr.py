@@ -33,8 +33,8 @@ tf.disable_v2_behavior()
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_integer("num_iterations", 400, "Number of iterations")
-flags.DEFINE_integer("num_traversals", 40, "Number of traversals/games")
+flags.DEFINE_integer("num_iterations", 100, "Number of iterations")
+flags.DEFINE_integer("num_traversals", 100, "Number of traversals/games")
 flags.DEFINE_string("game_name", "coup", "Name of the game")
 
 
@@ -68,20 +68,20 @@ def main(unused_argv):
                  len(deep_cfr_solver.strategy_buffer))
     logging.info("Final policy loss: '%s'", policy_loss)
 
-    average_policy = policy.tabular_policy_from_callable(
-        game, deep_cfr_solver.action_probabilities)
+    # average_policy = policy.tabular_policy_from_callable(
+    #     game, deep_cfr_solver.action_probabilities)
 
-    rl_resp(exploitee=average_policy,
+    rl_resp(exploitee=deep_cfr_solver,
             num_train_episodes=10000)
     # conv = exploitability.nash_conv(game, average_policy)
     # logging.info("Deep CFR in '%s' - NashConv: %s", FLAGS.game_name, conv)
 
-    average_policy_values = expected_game_score.policy_value(
-        game.new_initial_state(), [average_policy] * 2)
-    print("Computed player 0 value: {}".format(average_policy_values[0]))
-    print("Expected player 0 value: {}".format(-1 / 18))
-    print("Computed player 1 value: {}".format(average_policy_values[1]))
-    print("Expected player 1 value: {}".format(1 / 18))
+    # average_policy_values = expected_game_score.policy_value(
+    #     game.new_initial_state(), [average_policy] * 2)
+    # print("Computed player 0 value: {}".format(average_policy_values[0]))
+    # print("Expected player 0 value: {}".format(-1 / 18))
+    # print("Computed player 1 value: {}".format(average_policy_values[1]))
+    # print("Expected player 1 value: {}".format(1 / 18))
 
 
 if __name__ == "__main__":

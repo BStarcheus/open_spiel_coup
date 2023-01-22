@@ -228,7 +228,7 @@ def rl_resp(game="coup", exploitee="random", seed=0, window_size=30,
                                              batch_size)
     sess.run(tf.global_variables_initializer())
 
-    print("Starting...")
+    print("Starting rl_resp...")
 
     for ep in range(num_train_episodes):
       if (ep + 1) % eval_every == 0:
