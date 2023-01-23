@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
 
 def eval_against_fixed_bots(env, trained_agents, fixed_agents, num_episodes):
-  """Evaluates `trained_agents` against `random_agents` for `num_episodes`."""
+  """Evaluates `trained_agents` against `fixed_agents` for `num_episodes`."""
   num_players = len(fixed_agents)
   sum_episode_rewards = np.zeros(num_players)
   for player_pos in range(num_players):
@@ -127,7 +127,8 @@ class PolicyAgent(rl_agent.AbstractAgent):
     # Pick an action based on policy.
     cur_legal_actions = time_step.observations["legal_actions"][self._player_id]
     policy = self._policy.action_probabilities(self._env.get_state)
-    probs = list(policy.values())
+    probs = np.array(list(policy.values()))
+    probs /= probs.sum()
     action = np.random.choice(cur_legal_actions, p=probs)
     return rl_agent.StepOutput(action=action, probs=probs)
 
