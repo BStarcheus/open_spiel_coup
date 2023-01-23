@@ -126,7 +126,7 @@ class PolicyAgent(rl_agent.AbstractAgent):
 
     # Pick an action based on policy.
     cur_legal_actions = time_step.observations["legal_actions"][self._player_id]
-    policy = self._policy.action_probabilities(self._env.get_state, self._player_id)
+    policy = self._policy.action_probabilities(self._env.get_state)
     probs = list(policy.values())
     action = np.random.choice(cur_legal_actions, p=probs)
     return rl_agent.StepOutput(action=action, probs=probs)
