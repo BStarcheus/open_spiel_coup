@@ -38,22 +38,20 @@ if __name__ == "__main__":
   # Training parameters
   flags.DEFINE_string("checkpoint_dir", "/tmp/dqn_test",
                       "Directory to save/load the agent models.")
-  flags.DEFINE_integer(
-      "save_every", int(1e4),
-      "Episode frequency at which the DQN agent models are saved.")
+  flags.DEFINE_integer("save_every", int(1e4),
+                       "Episode freq at which the DQN agent models are saved.")
   flags.DEFINE_integer("num_train_episodes", int(1e6),
-                      "Number of training episodes.")
-  flags.DEFINE_integer(
-      "eval_every", 1000,
-      "Episode frequency at which the DQN agents are evaluated.")
+                       "Number of training episodes.")
+  flags.DEFINE_integer("eval_every", 1000,
+                       "Episode freq at which the DQN agents are evaluated.")
   flags.DEFINE_integer("eval_episodes", 1000,
-                      "How many episodes to run per eval.")
+                       "How many episodes to run per eval.")
 
   # DQN model hyper-parameters
   flags.DEFINE_list("hidden_layers_sizes", [64, 64, 64],
                     "Number of hidden units in the Q-Network MLP.")
   flags.DEFINE_integer("replay_buffer_capacity", int(1e5),
-                      "Size of the replay buffer.")
+                       "Size of the replay buffer.")
   flags.DEFINE_integer("batch_size", 32,
                       "Number of transitions to sample at each learning step.")
 

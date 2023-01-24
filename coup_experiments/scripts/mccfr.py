@@ -17,8 +17,6 @@
 from absl import app
 from absl import flags
 
-from open_spiel.python.algorithms import exploitability
-from open_spiel.python.algorithms import external_sampling_mccfr as external_mccfr
 from open_spiel.python.algorithms import outcome_sampling_mccfr as outcome_mccfr
 import pyspiel
 
@@ -26,33 +24,28 @@ from coup_experiments.algorithms.rl_response import rl_resp
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_enum(
-    "sampling",
-    "outcome",
-    ["external", "outcome"],
-    "Sampling for the MCCFR solver",
-)
-flags.DEFINE_integer("iterations", 10000, "Number of iterations")
+flags.DEFINE_integer("iterations", 1000000, "Number of iterations")
 flags.DEFINE_string("game", "coup", "Name of the game")
-flags.DEFINE_integer("print_freq", 1000,
-                     "How often to print the exploitability")
+flags.DEFINE_integer("eval_every", 100000,
+                     "How often to evaluate model")
 
+flags.DEFINE_integer("rl_resp_train_episodes", 10000,
+                     "Number of training episodes for rl_resp model")
+flags.DEFINE_integer("rl_resp_eval_every", 1000,
+                     "How often to evaluate trained rl_resp model")
+flags.DEFINE_integer("rl_resp_eval_episodes", 1000,
+                     "Number of episodes per rl_resp evaluation")
 
 def main(_):
   game = pyspiel.load_game(FLAGS.game)
-  if FLAGS.sampling == "external":
-    cfr_solver = external_mccfr.ExternalSamplingSolver(
-        game, external_mccfr.AverageType.SIMPLE)
-  else:
-    cfr_solver = outcome_mccfr.OutcomeSamplingSolver(game)
+  cfr_solver = outcome_mccfr.OutcomeSamplingSolver(game)
   for i in range(FLAGS.iterations):
     cfr_solver.iteration()
-    if i % FLAGS.print_freq == 0:
+    if i % FLAGS.eval_every == 0:
       rl_resp(exploitee=cfr_solver.average_policy(),
-              num_train_episodes=10000)
-    #   conv = exploitability.nash_conv(game, cfr_solver.average_policy())
-    #   print("Iteration {} exploitability {}".format(i, conv))
-
+              num_train_episodes=FLAGS.rl_resp_train_episodes,
+              eval_every=FLAGS.rl_resp_eval_every,
+              eval_episodes=FLAGS.rl_resp_eval_episodes)
 
 if __name__ == "__main__":
   app.run(main)

@@ -21,7 +21,6 @@ import tensorflow.compat.v1 as tf
 
 from open_spiel.python import policy
 from open_spiel.python import rl_environment
-from open_spiel.python.algorithms import exploitability
 from open_spiel.python.algorithms import nfsp
 
 from coup_experiments.algorithms.rl_response import rl_resp
@@ -32,13 +31,12 @@ flags.DEFINE_string("game_name", "coup",
                     "Name of the game.")
 flags.DEFINE_integer("num_players", 2,
                      "Number of players.")
-flags.DEFINE_integer("num_train_episodes", 100000,#int(20e6),
+flags.DEFINE_integer("num_train_episodes", 1000000,
                      "Number of training episodes.")
 flags.DEFINE_integer("eval_every", 10000,
                      "Episode frequency at which the agents are evaluated.")
-flags.DEFINE_list("hidden_layers_sizes", [
-    128,
-], "Number of hidden units in the avg-net and Q-net.")
+flags.DEFINE_list("hidden_layers_sizes", [128,], 
+                  "Number of hidden units in the avg-net and Q-net.")
 flags.DEFINE_integer("replay_buffer_capacity", int(2e5),
                      "Size of the replay buffer.")
 flags.DEFINE_integer("reservoir_buffer_capacity", int(2e6),
@@ -69,12 +67,16 @@ flags.DEFINE_float("epsilon_start", 0.06,
                    "Starting exploration parameter.")
 flags.DEFINE_float("epsilon_end", 0.001,
                    "Final exploration parameter.")
-flags.DEFINE_string("evaluation_metric", "nash_conv",
-                    "Choose from 'exploitability', 'nash_conv'.")
 flags.DEFINE_bool("use_checkpoints", True, "Save/load neural network weights.")
 flags.DEFINE_string("checkpoint_dir", "/tmp/nfsp_test",
                     "Directory to save/load the agent.")
 
+flags.DEFINE_integer("rl_resp_train_episodes", 10000,
+                     "Number of training episodes for rl_resp model")
+flags.DEFINE_integer("rl_resp_eval_every", 1000,
+                     "How often to evaluate trained rl_resp model")
+flags.DEFINE_integer("rl_resp_eval_episodes", 1000,
+                     "Number of episodes per rl_resp evaluation")
 
 class NFSPPolicies(policy.Policy):
   """Joint policy to be evaluated."""
@@ -157,19 +159,10 @@ def main(unused_argv):
         logging.info("Losses: %s", losses)
 
         rl_resp(exploitee=joint_avg_policy,
-                num_train_episodes=10000)
+                num_train_episodes=FLAGS.rl_resp_train_episodes,
+                eval_every=FLAGS.rl_resp_eval_every,
+                eval_episodes=FLAGS.rl_resp_eval_episodes)
 
-        # if FLAGS.evaluation_metric == "exploitability":
-        #   # Avg exploitability is implemented only for 2 players constant-sum
-        #   # games, use nash_conv otherwise.
-        #   expl = exploitability.exploitability(env.game, joint_avg_policy)
-        #   logging.info("[%s] Exploitability AVG %s", ep + 1, expl)
-        # elif FLAGS.evaluation_metric == "nash_conv":
-        #   nash_conv = exploitability.nash_conv(env.game, joint_avg_policy)
-        #   logging.info("[%s] NashConv %s", ep + 1, nash_conv)
-        # else:
-        #   raise ValueError(" ".join(("Invalid evaluation metric, choose from",
-        #                              "'exploitability', 'nash_conv'.")))
         if FLAGS.use_checkpoints:
           for agent in agents:
             agent.save(FLAGS.checkpoint_dir)
