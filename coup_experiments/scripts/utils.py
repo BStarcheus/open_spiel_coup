@@ -13,4 +13,4 @@ def log_to_file(filename):
 def log_flags(flags, names):
   for name in names:
     logging.info("%s: %s", name, getattr(flags, name))
-
+  logging.info("_____________________________________________")

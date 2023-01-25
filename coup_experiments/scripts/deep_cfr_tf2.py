@@ -61,11 +61,11 @@ flags.DEFINE_string("log_file", "", "File to output log to")
 
 def main(unused_argv):
   log_to_file(FLAGS.log_file)
-  # log_flags(FLAGS, ["num_iterations", "num_traversals", "policy_network_layers",
-  #     "advantage_network_layers", "learning_rate", "batch_size_advantage",
-  #     "batch_size_strategy", "memory_capacity", "policy_network_train_steps",
-  #     "advantage_network_train_steps", "reinitialize_advantage_networks",
-  #     "rl_resp_train_episodes", "rl_resp_eval_every", "rl_resp_eval_episodes"])
+  log_flags(FLAGS, ["num_iterations", "num_traversals", "policy_network_layers",
+      "advantage_network_layers", "learning_rate", "batch_size_advantage",
+      "batch_size_strategy", "memory_capacity", "policy_network_train_steps",
+      "advantage_network_train_steps", "reinitialize_advantage_networks",
+      "rl_resp_train_episodes", "rl_resp_eval_every", "rl_resp_eval_episodes"])
   logging.info("Loading %s", FLAGS.game_name)
   game = pyspiel.load_game(FLAGS.game_name)
   policy_network_layers = [int(l) for l in FLAGS.policy_network_layers]
@@ -109,7 +109,6 @@ def main(unused_argv):
   #     probability_threshold=0.5)
   # print("Computed player 0 value: {}".format(average_policy_values[0]))
   # print("Computed player 1 value: {}".format(average_policy_values[1]))
-  logging.info("\n\n")
 
 if __name__ == "__main__":
   app.run(main)
