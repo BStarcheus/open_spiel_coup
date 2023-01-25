@@ -23,6 +23,7 @@ import pyspiel
 
 from coup_experiments.algorithms.rl_response import rl_resp
 from utils import *
+import time
 
 FLAGS = flags.FLAGS
 
@@ -46,14 +47,27 @@ def main(_):
   logging.info("Loading %s", FLAGS.game_name)
   game = pyspiel.load_game(FLAGS.game)
   cfr_solver = outcome_mccfr.OutcomeSamplingSolver(game)
+
+  total_rl_resp_time = 0
+  first_start = time.time()
   for i in range(FLAGS.iterations):
     cfr_solver.iteration()
     if i % FLAGS.eval_every == 0:
+      start = time.time()
       rl_resp(exploitee=cfr_solver.average_policy(),
               num_train_episodes=FLAGS.rl_resp_train_episodes,
               eval_every=FLAGS.rl_resp_eval_every,
               eval_episodes=FLAGS.rl_resp_eval_episodes)
+      delta = time.time() - start
+      total_rl_resp_time += delta
+      logging.info("rl_resp run time: %s sec", delta)
       logging.info("_____________________________________________")
+  
+  total_time = time.time() - first_start
+  logging.info("Total algo run time: %s sec", total_time - total_rl_resp_time)
+  logging.info("Total rl_resp run time: %s sec", total_rl_resp_time)
+  logging.info("Total run time: %s sec", total_time)
+
 
 if __name__ == "__main__":
   app.run(main)

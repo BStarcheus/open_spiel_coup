@@ -25,6 +25,7 @@ import pyspiel
 
 from coup_experiments.algorithms.rl_response import rl_resp
 from utils import *
+import time
 
 FLAGS = flags.FLAGS
 
@@ -86,7 +87,10 @@ def main(unused_argv):
       infer_device="gpu",
       train_device="gpu",
       sampling_method='outcome')
+  start = time.time()
+  first_start = start
   _, advantage_losses, policy_loss = deep_cfr_solver.solve()
+  delta = time.time() - start
   for player, losses in advantage_losses.items():
     logging.info("Advantage for player %d: %s", player,
                  losses[:2] + ["..."] + losses[-2:])
@@ -95,14 +99,21 @@ def main(unused_argv):
   logging.info("Strategy Buffer Size: '%s'",
                len(deep_cfr_solver.strategy_buffer))
   logging.info("Final policy loss: '%s'", policy_loss)
+  logging.info("Algo run time: %s sec", delta)
 
   # average_policy = policy.tabular_policy_from_callable(
   #     game, deep_cfr_solver.action_probabilities)
 
+  start = time.time()
   rl_resp(exploitee=deep_cfr_solver,
           num_train_episodes=FLAGS.rl_resp_train_episodes,
           eval_every=FLAGS.rl_resp_eval_every,
           eval_episodes=FLAGS.rl_resp_eval_episodes)
+  final_end = time.time()
+  delta = final_end - start
+  logging.info("rl_resp run time: %s sec", delta)
+  total_time = final_end - first_start
+  logging.info("Total run time: %s sec", total_time)
 
   # average_policy_values = expected_game_score.policy_value(
   #     game.new_initial_state(), [average_policy] * 2,
