@@ -26,6 +26,7 @@ from open_spiel.python.algorithms import expected_game_score
 import pyspiel
 
 from coup_experiments.algorithms.rl_response import rl_resp
+from utils import *
 
 # Temporarily disable TF2 behavior until we update the code.
 tf.disable_v2_behavior()
@@ -60,9 +61,16 @@ flags.DEFINE_integer("rl_resp_eval_every", 1000,
                      "How often to evaluate trained rl_resp model")
 flags.DEFINE_integer("rl_resp_eval_episodes", 1000,
                      "Number of episodes per rl_resp evaluation")
+flags.DEFINE_string("log_file", "", "File to output log to")
 
 
 def main(unused_argv):
+  log_to_file(FLAGS.log_file)
+  # log_flags(FLAGS, ["num_iterations", "num_traversals", "policy_network_layers",
+  #     "advantage_network_layers", "learning_rate", "batch_size_advantage",
+  #     "batch_size_strategy", "memory_capacity", "policy_network_train_steps",
+  #     "advantage_network_train_steps", "reinitialize_advantage_networks",
+  #     "rl_resp_train_episodes", "rl_resp_eval_every", "rl_resp_eval_episodes"])
   logging.info("Loading %s", FLAGS.game_name)
   game = pyspiel.load_game(FLAGS.game_name)
   policy_network_layers = [int(l) for l in FLAGS.policy_network_layers]
@@ -109,6 +117,7 @@ def main(unused_argv):
     # print("Computed player 1 value: {}".format(average_policy_values[1]))
     # print("Expected player 1 value: {}".format(1 / 18))
 
+    logging.info("\n\n")
 
 if __name__ == "__main__":
   app.run(main)

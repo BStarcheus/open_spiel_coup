@@ -16,11 +16,13 @@
 
 from absl import app
 from absl import flags
+from absl import logging
 
 from open_spiel.python.algorithms import outcome_sampling_mccfr as outcome_mccfr
 import pyspiel
 
 from coup_experiments.algorithms.rl_response import rl_resp
+from utils import *
 
 FLAGS = flags.FLAGS
 
@@ -35,8 +37,13 @@ flags.DEFINE_integer("rl_resp_eval_every", 1000,
                      "How often to evaluate trained rl_resp model")
 flags.DEFINE_integer("rl_resp_eval_episodes", 1000,
                      "Number of episodes per rl_resp evaluation")
+flags.DEFINE_string("log_file", "", "File to output log to")
 
 def main(_):
+  log_to_file(FLAGS.log_file)
+  # log_flags(FLAGS, ["iterations", "eval_every", "rl_resp_train_episodes",
+  #                   "rl_resp_eval_every", "rl_resp_eval_episodes"])
+  logging.info("Loading %s", FLAGS.game_name)
   game = pyspiel.load_game(FLAGS.game)
   cfr_solver = outcome_mccfr.OutcomeSamplingSolver(game)
   for i in range(FLAGS.iterations):
@@ -46,6 +53,7 @@ def main(_):
               num_train_episodes=FLAGS.rl_resp_train_episodes,
               eval_every=FLAGS.rl_resp_eval_every,
               eval_episodes=FLAGS.rl_resp_eval_episodes)
+  logging.info("\n\n")
 
 if __name__ == "__main__":
   app.run(main)

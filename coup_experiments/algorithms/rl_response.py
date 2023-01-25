@@ -23,6 +23,7 @@ Use either as a script, or import rl_resp and call directly from other algorithm
 
 from absl import app
 from absl import flags
+from absl import logging
 import numpy as np
 import tensorflow.compat.v1 as tf
 
@@ -61,6 +62,8 @@ if __name__ == "__main__":
   flags.DEFINE_integer("window_size", 30, "Size of window for rolling average")
   flags.DEFINE_string("game", "coup", "Game string")
   flags.DEFINE_string("exploitee", "random", "Exploitee (random | first)")
+
+  flags.DEFINE_string("log_file", "", "File to output log to")
 
 
 def eval_against_fixed_bots(env, trained_agents, fixed_agents, num_episodes):
@@ -227,7 +230,7 @@ def rl_resp(game="coup", exploitee="random", seed=0, window_size=30,
                                              batch_size)
     sess.run(tf.global_variables_initializer())
 
-    print("Starting rl_resp...")
+    logging.info("Starting rl_resp...")
 
     for ep in range(num_train_episodes):
       if (ep + 1) % eval_every == 0:
@@ -243,7 +246,7 @@ def rl_resp(game="coup", exploitee="random", seed=0, window_size=30,
         total_value += value
         total_value_n += 1
         avg_value = total_value / total_value_n
-        print(("[{}] Mean episode rewards {}, value: {}, " +
+        logging.info(("[{}] Mean episode rewards {}, value: {}, " +
                "rval: {} (p0/p1: {} / {}), aval: {}").format(
                    ep + 1, r_mean, value, rolling_value, rolling_value_p0,
                    rolling_value_p1, avg_value))

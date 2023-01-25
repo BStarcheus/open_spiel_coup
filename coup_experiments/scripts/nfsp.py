@@ -24,6 +24,7 @@ from open_spiel.python import rl_environment
 from open_spiel.python.algorithms import nfsp
 
 from coup_experiments.algorithms.rl_response import rl_resp
+from utils import *
 
 FLAGS = flags.FLAGS
 
@@ -77,6 +78,7 @@ flags.DEFINE_integer("rl_resp_eval_every", 1000,
                      "How often to evaluate trained rl_resp model")
 flags.DEFINE_integer("rl_resp_eval_episodes", 1000,
                      "Number of episodes per rl_resp evaluation")
+flags.DEFINE_string("log_file", "", "File to output log to")
 
 class NFSPPolicies(policy.Policy):
   """Joint policy to be evaluated."""
@@ -111,6 +113,14 @@ class NFSPPolicies(policy.Policy):
 
 
 def main(unused_argv):
+  log_to_file(FLAGS.log_file)
+  # log_flags(FLAGS, ["num_train_episodes", "eval_every", "hidden_layers_sizes",
+  #     "replay_buffer_capacity", "reservoir_buffer_capacity", 
+  #     "min_buffer_size_to_learn", "anticipatory_param", "batch_size",
+  #     "learn_every", "rl_learning_rate", "sl_learning_rate",
+  #     "update_target_network_every", "epsilon_decay_duration", "epsilon_start",
+  #     "epsilon_end", "rl_resp_train_episodes", "rl_resp_eval_every",
+  #     "rl_resp_eval_episodes"])
   logging.info("Loading %s", FLAGS.game_name)
   game = FLAGS.game_name
   num_players = FLAGS.num_players
@@ -179,6 +189,7 @@ def main(unused_argv):
       for agent in agents:
         agent.step(time_step)
 
+  logging.info("\n\n")
 
 if __name__ == "__main__":
   app.run(main)
