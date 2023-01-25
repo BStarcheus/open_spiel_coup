@@ -1,8 +1,8 @@
 from absl import logging
 
 def log_to_file(filename):
-  fileh = logging.FileHandler(filename, 'a')
-  formatter = logging.Formatter('%(message)s')
+  fileh = logging.logging.FileHandler(filename, 'a')
+  formatter = logging.logging.Formatter('%(message)s')
   fileh.setFormatter(formatter)
 
   log = logging.logging.getLogger()
