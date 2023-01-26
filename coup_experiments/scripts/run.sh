@@ -16,6 +16,7 @@ for algo in "${algos[@]}"; do
     for flagfile in flags/${algo}*.cfg; do
         [ -f "${flagfile}" ] || continue
         ind=$((ind+1))
+        echo "Starting ${algo} on ${flagfile}"
         python3 ${algo}.py --flagfile=${flagfile} &
         if [ $((ind%num_run_parallel)) -eq 0 ]; then
             wait
