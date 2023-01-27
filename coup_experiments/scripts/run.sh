@@ -13,7 +13,7 @@ cd /repo/coup_experiments/scripts
 # num_run_parallel=2
 # ind=0
 for algo in "${algos[@]}"; do
-    for flagfile in flags/${algo}*.cfg; do
+    for flagfile in flags/${algo}-*.cfg; do
         [ -f "${flagfile}" ] || continue
         # ind=$((ind+1))
         echo "Starting ${algo} on ${flagfile}"
