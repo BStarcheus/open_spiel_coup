@@ -23,7 +23,6 @@ from open_spiel.python.algorithms import deep_cfr_tf2
 from open_spiel.python.algorithms import expected_game_score
 import pyspiel
 
-from coup_experiments.algorithms.rl_response import rl_resp
 from utils import *
 import time
 
@@ -61,7 +60,8 @@ flags.DEFINE_string("log_file", "", "File to output log to")
 
 
 def main(unused_argv):
-  log_to_file(FLAGS.log_file)
+  if len(FLAGS.log_file):
+    log_to_file(FLAGS.log_file)
   log_flags(FLAGS, ["num_iterations", "num_traversals", "policy_network_layers",
       "advantage_network_layers", "learning_rate", "batch_size_advantage",
       "batch_size_strategy", "memory_capacity", "policy_network_train_steps",
@@ -86,7 +86,7 @@ def main(unused_argv):
       reinitialize_advantage_networks=FLAGS.reinitialize_advantage_networks,
       infer_device="gpu",
       train_device="gpu",
-      sampling_method='outcome')
+      sampling_method="outcome")
   start = time.time()
   first_start = start
   _, advantage_losses, policy_loss = deep_cfr_solver.solve()
@@ -105,6 +105,7 @@ def main(unused_argv):
   #     game, deep_cfr_solver.action_probabilities)
 
   start = time.time()
+  from coup_experiments.algorithms.rl_response import rl_resp
   rl_resp(exploitee=deep_cfr_solver,
           num_train_episodes=FLAGS.rl_resp_train_episodes,
           eval_every=FLAGS.rl_resp_eval_every,

@@ -41,7 +41,8 @@ flags.DEFINE_integer("rl_resp_eval_episodes", 1000,
 flags.DEFINE_string("log_file", "", "File to output log to")
 
 def main(_):
-  log_to_file(FLAGS.log_file)
+  if len(FLAGS.log_file):
+    log_to_file(FLAGS.log_file)
   log_flags(FLAGS, ["iterations", "eval_every", "rl_resp_train_episodes",
                     "rl_resp_eval_every", "rl_resp_eval_episodes"])
   logging.info("Loading %s", FLAGS.game_name)

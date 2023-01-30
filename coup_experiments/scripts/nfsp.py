@@ -114,7 +114,8 @@ class NFSPPolicies(policy.Policy):
 
 
 def main(unused_argv):
-  log_to_file(FLAGS.log_file)
+  if len(FLAGS.log_file):
+    log_to_file(FLAGS.log_file)
   log_flags(FLAGS, ["num_train_episodes", "eval_every", "hidden_layers_sizes",
       "replay_buffer_capacity", "reservoir_buffer_capacity", 
       "min_buffer_size_to_learn", "anticipatory_param", "batch_size",

@@ -66,7 +66,8 @@ flags.DEFINE_string("log_file", "", "File to output log to")
 
 
 def main(unused_argv):
-  log_to_file(FLAGS.log_file)
+  if len(FLAGS.log_file):
+    log_to_file(FLAGS.log_file)
   log_flags(FLAGS, ["num_iterations", "num_traversals", "policy_network_layers",
       "advantage_network_layers", "learning_rate", "batch_size_advantage",
       "batch_size_strategy", "memory_capacity", "policy_network_train_steps",
@@ -91,7 +92,7 @@ def main(unused_argv):
         policy_network_train_steps=FLAGS.policy_network_train_steps,
         advantage_network_train_steps=FLAGS.advantage_network_train_steps,
         reinitialize_advantage_networks=FLAGS.reinitialize_advantage_networks,
-        sampling_method='outcome')
+        sampling_method="outcome")
     sess.run(tf.global_variables_initializer())
     start = time.time()
     first_start = start
