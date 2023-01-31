@@ -28,7 +28,7 @@ import time
 FLAGS = flags.FLAGS
 
 flags.DEFINE_integer("iterations", 1000000, "Number of iterations")
-flags.DEFINE_string("game", "coup", "Name of the game")
+flags.DEFINE_string("game_name", "coup", "Name of the game")
 flags.DEFINE_integer("eval_every", 100000,
                      "How often to evaluate model")
 
@@ -46,7 +46,7 @@ def main(_):
   log_flags(FLAGS, ["iterations", "eval_every", "rl_resp_train_episodes",
                     "rl_resp_eval_every", "rl_resp_eval_episodes"])
   logging.info("Loading %s", FLAGS.game_name)
-  game = pyspiel.load_game(FLAGS.game)
+  game = pyspiel.load_game(FLAGS.game_name)
   cfr_solver = outcome_mccfr.OutcomeSamplingSolver(game)
 
   total_rl_resp_time = 0
