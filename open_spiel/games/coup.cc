@@ -110,40 +110,12 @@ std::string StatelessActionToString(ActionType action) {
     return "LoseCard1";
   } else if (action == ActionType::kLoseCard2) {
     return "LoseCard2";
-  } else if (action == ActionType::kPassFA) {
-    return "PassFA";
-  } else if (action == ActionType::kPassFABlock) {
-    return "PassFABlock";
-  } else if (action == ActionType::kPassTax) {
-    return "PassTax";
-  } else if (action == ActionType::kPassExchange) {
-    return "PassExchange";
-  } else if (action == ActionType::kPassAssassinateBlock) {
-    return "PassAssassinateBlock";
-  } else if (action == ActionType::kPassSteal) {
-    return "PassSteal";
-  } else if (action == ActionType::kPassStealBlock) {
-    return "PassStealBlock";
-  } else if (action == ActionType::kBlockFA) {
-    return "BlockFA";
-  } else if (action == ActionType::kBlockAssassinate) {
-    return "BlockAssassinate";
-  } else if (action == ActionType::kBlockSteal) {
-    return "BlockSteal";
-  } else if (action == ActionType::kChallengeFABlock) {
-    return "ChallengeFABlock";
-  } else if (action == ActionType::kChallengeTax) {
-    return "ChallengeTax";
-  } else if (action == ActionType::kChallengeExchange) {
-    return "ChallengeExchange";
-  } else if (action == ActionType::kChallengeAssassinate) {
-    return "ChallengeAssassinate";
-  } else if (action == ActionType::kChallengeAssassinateBlock) {
-    return "ChallengeAssassinateBlock";
-  } else if (action == ActionType::kChallengeSteal) {
-    return "ChallengeSteal";
-  } else if (action == ActionType::kChallengeStealBlock) {
-    return "ChallengeStealBlock";
+  } else if (action == ActionType::kPass) {
+    return "Pass";
+  } else if (action == ActionType::kBlock) {
+    return "Block";
+  } else if (action == ActionType::kChallenge) {
+    return "Challenge";
   } else if (action == ActionType::kExchangeReturn12) {
     return "ExchangeReturn12";
   } else if (action == ActionType::kExchangeReturn13) {
@@ -643,166 +615,159 @@ void CoupState::DoApplyAction(Action move) {
       cur_rewards_.at(opp_player_) += 1;
       NextPlayerTurn();
 
-    } else if (move >= (int)ActionType::kPassFA &&
-               move <= (int)ActionType::kPassStealBlock) {
+    } else if (action == ActionType::kPass) {
       cp.last_action = action;
-      ActionType n_act;
+      ActionType n_act = op.last_action;
 
-      if (action == ActionType::kPassFABlock ||
-          action == ActionType::kPassAssassinateBlock ||
-          action == ActionType::kPassStealBlock) {
+      if (n_act == ActionType::kBlock) {
         // Block succeeds. Nothing to do.
         NextPlayerTurn();
       } else {
-        if (action == ActionType::kPassFA) {
-          n_act = ActionType::kForeignAid;
-        } else if (action == ActionType::kPassTax) {
-          n_act = ActionType::kTax;
-        } else if (action == ActionType::kPassExchange) {
-          n_act = ActionType::kExchange;
-        } else if (action == ActionType::kPassSteal) {
-          n_act = ActionType::kSteal;
-        }
         NextPlayerMove();
         // Pass, so complete their action
         DoApplyAction((Action)n_act);
       }
 
-    } else if (move >= (int)ActionType::kBlockFA &&
-               move <= (int)ActionType::kBlockSteal) {
+    } else if (action == ActionType::kBlock) {
       cp.last_action = action;
       NextPlayerMove();
 
-    } else if (action == ActionType::kChallengeFABlock) {
-      cp.last_action = action;
-      if (op.HasFaceDownCard(CardType::kDuke)) {
-        cp.lost_challenge = true;
-        ChallengeFailReplaceCard(CardType::kDuke);
-        // cp must lose a card. Still their move
-      } else {
-        op.lost_challenge = true;
-        // Block failed, so complete the action
-        cp.coins += 2;
-        // opp must lose a card
-        NextPlayerMove();
-      }
+    } else if (action == ActionType::kChallenge) {
+      if (op.last_action == ActionType::kBlock) {
+        if (cp.last_action == ActionType::kForeignAid) {
+          cp.last_action = action;
+          if (op.HasFaceDownCard(CardType::kDuke)) {
+            cp.lost_challenge = true;
+            ChallengeFailReplaceCard(CardType::kDuke);
+            // cp must lose a card. Still their move
+          } else {
+            op.lost_challenge = true;
+            // Block failed, so complete the action
+            cp.coins += 2;
+            // opp must lose a card
+            NextPlayerMove();
+          }
+        } else if (cp.last_action == ActionType::kAssassinate) {
+          cp.last_action = action;
+          if (op.HasFaceDownCard(CardType::kContessa)) {
+            cp.lost_challenge = true;
+            ChallengeFailReplaceCard(CardType::kContessa);
+            // cp must lose a card. Still their move
+          } else {
+            // op loses game. Lose 1 for assassination
+            // and 1 for losing challenge
+            // (if they werent already eliminated)
+            if (op.cards.at(0).state == CardStateType::kFaceDown) {
+              op.cards.at(0).state = CardStateType::kFaceUp;
+              cur_rewards_.at(cur_player_move_) += 1;
+              cur_rewards_.at(opp_player_) -= 1;
+            }
+            if (op.cards.at(1).state == CardStateType::kFaceDown) {
+              op.cards.at(1).state = CardStateType::kFaceUp;
+              cur_rewards_.at(cur_player_move_) += 1;
+              cur_rewards_.at(opp_player_) -= 1;
+            }
+          }
+        } else if (cp.last_action == ActionType::kSteal) {
+          cp.last_action = action;
+          if (op.HasFaceDownCard(CardType::kCaptain)) {
+            cp.lost_challenge = true;
+            ChallengeFailReplaceCard(CardType::kCaptain);
+            // cp must lose a card. Still their move
+          } else if (op.HasFaceDownCard(CardType::kAmbassador)) {
+            cp.lost_challenge = true;
+            ChallengeFailReplaceCard(CardType::kAmbassador);
+            // cp must lose a card. Still their move
+          } else {
+            op.lost_challenge = true;
 
-    } else if (action == ActionType::kChallengeTax) {
-      cp.last_action = action;
-      if (op.HasFaceDownCard(CardType::kDuke)) {
-        cp.lost_challenge = true;
-        ChallengeFailReplaceCard(CardType::kDuke);
-        // Complete the action
-        op.coins += 3;
-        // cp must lose a card. Still their move
-      } else {
-        op.lost_challenge = true;
-        // opp must lose a card
-        NextPlayerMove();
-      }
-
-    } else if (action == ActionType::kChallengeExchange) {
-      cp.last_action = action;
-      if (op.HasFaceDownCard(CardType::kAmbassador)) {
-        cp.lost_challenge = true;
-        ChallengeFailReplaceCard(CardType::kAmbassador);
-        // Turn off is_chance_ momentarily, so that Exchange below works.
-        // Exchange will turn it back on anyway.
-        is_chance_ = false;
-        // Complete the action
-        NextPlayerMove();
-        DoApplyAction((Action)ActionType::kExchange);
-        // cp must lose a card
-        // After exchange return, it will switch to their action
-      } else {
-        op.lost_challenge = true;
-        // opp must lose a card
-        NextPlayerMove();
-      }
-
-    } else if (action == ActionType::kChallengeAssassinate) {
-      cp.last_action = action;
-      if (op.HasFaceDownCard(CardType::kAssassin)) {
-        // cp loses game. Lose 1 for assassination
-        // and 1 for losing challenge
-        // (if they werent already eliminated)
-        if (cp.cards.at(0).state == CardStateType::kFaceDown) {
-          cp.cards.at(0).state = CardStateType::kFaceUp;
-          cur_rewards_.at(cur_player_move_) -= 1;
-          cur_rewards_.at(opp_player_) += 1;
+            // Block failed. Complete the steal
+            int numSteal = (op.coins > 1) ? 2 : 1;
+            cp.coins += numSteal;
+            op.coins -= numSteal;
+            // opp must lose a card
+            NextPlayerMove();
+          }
+        } else {
+          SpielFatalError("Invalid player action");
         }
-        if (cp.cards.at(1).state == CardStateType::kFaceDown) {
-          cp.cards.at(1).state = CardStateType::kFaceUp;
-          cur_rewards_.at(cur_player_move_) -= 1;
-          cur_rewards_.at(opp_player_) += 1;
+      } else if (op.last_action == ActionType::kTax) {
+        cp.last_action = action;
+        if (op.HasFaceDownCard(CardType::kDuke)) {
+          cp.lost_challenge = true;
+          ChallengeFailReplaceCard(CardType::kDuke);
+          // Complete the action
+          op.coins += 3;
+          // cp must lose a card. Still their move
+        } else {
+          op.lost_challenge = true;
+          // opp must lose a card
+          NextPlayerMove();
         }
-      } else {
-        op.lost_challenge = true;
-        // Coins spent are returned in this one case
-        op.coins += 3;
-        // opp must lose a card
-        NextPlayerMove();
-      }
 
-    } else if (action == ActionType::kChallengeAssassinateBlock) {
-      cp.last_action = action;
-      if (op.HasFaceDownCard(CardType::kContessa)) {
-        cp.lost_challenge = true;
-        ChallengeFailReplaceCard(CardType::kContessa);
-        // cp must lose a card. Still their move
-      } else {
-        // op loses game. Lose 1 for assassination
-        // and 1 for losing challenge
-        // (if they werent already eliminated)
-        if (op.cards.at(0).state == CardStateType::kFaceDown) {
-          op.cards.at(0).state = CardStateType::kFaceUp;
-          cur_rewards_.at(cur_player_move_) += 1;
-          cur_rewards_.at(opp_player_) -= 1;
+      } else if (op.last_action == ActionType::kExchange) {
+        cp.last_action = action;
+        if (op.HasFaceDownCard(CardType::kAmbassador)) {
+          cp.lost_challenge = true;
+          ChallengeFailReplaceCard(CardType::kAmbassador);
+          // Turn off is_chance_ momentarily, so that Exchange below works.
+          // Exchange will turn it back on anyway.
+          is_chance_ = false;
+          // Complete the action
+          NextPlayerMove();
+          DoApplyAction((Action)ActionType::kExchange);
+          // cp must lose a card
+          // After exchange return, it will switch to their action
+        } else {
+          op.lost_challenge = true;
+          // opp must lose a card
+          NextPlayerMove();
         }
-        if (op.cards.at(1).state == CardStateType::kFaceDown) {
-          op.cards.at(1).state = CardStateType::kFaceUp;
-          cur_rewards_.at(cur_player_move_) += 1;
-          cur_rewards_.at(opp_player_) -= 1;
+
+      } else if (op.last_action == ActionType::kAssassinate) {
+        cp.last_action = action;
+        if (op.HasFaceDownCard(CardType::kAssassin)) {
+          // cp loses game. Lose 1 for assassination
+          // and 1 for losing challenge
+          // (if they werent already eliminated)
+          if (cp.cards.at(0).state == CardStateType::kFaceDown) {
+            cp.cards.at(0).state = CardStateType::kFaceUp;
+            cur_rewards_.at(cur_player_move_) -= 1;
+            cur_rewards_.at(opp_player_) += 1;
+          }
+          if (cp.cards.at(1).state == CardStateType::kFaceDown) {
+            cp.cards.at(1).state = CardStateType::kFaceUp;
+            cur_rewards_.at(cur_player_move_) -= 1;
+            cur_rewards_.at(opp_player_) += 1;
+          }
+        } else {
+          op.lost_challenge = true;
+          // Coins spent are returned in this one case
+          op.coins += 3;
+          // opp must lose a card
+          NextPlayerMove();
         }
-      }
 
-    } else if (action == ActionType::kChallengeSteal) {
-      cp.last_action = action;
-      if (op.HasFaceDownCard(CardType::kCaptain)) {
-        cp.lost_challenge = true;
-        ChallengeFailReplaceCard(CardType::kCaptain);
+      } else if (op.last_action == ActionType::kSteal) {
+        cp.last_action = action;
+        if (op.HasFaceDownCard(CardType::kCaptain)) {
+          cp.lost_challenge = true;
+          ChallengeFailReplaceCard(CardType::kCaptain);
 
-        // Complete the action
-        int numSteal = (cp.coins > 1) ? 2 : 1;
-        op.coins += numSteal;
-        cp.coins -= numSteal;
+          // Complete the action
+          int numSteal = (cp.coins > 1) ? 2 : 1;
+          op.coins += numSteal;
+          cp.coins -= numSteal;
 
-        // cp must lose a card. Still their move
+          // cp must lose a card. Still their move
+        } else {
+          op.lost_challenge = true;
+          // opp must lose a card
+          NextPlayerMove();
+        }
+
       } else {
-        op.lost_challenge = true;
-        // opp must lose a card
-        NextPlayerMove();
-      }
-
-    } else if (action == ActionType::kChallengeStealBlock) {
-      cp.last_action = action;
-      if (op.HasFaceDownCard(CardType::kCaptain)) {
-        cp.lost_challenge = true;
-        ChallengeFailReplaceCard(CardType::kCaptain);
-        // cp must lose a card. Still their move
-      } else if (op.HasFaceDownCard(CardType::kAmbassador)) {
-        cp.lost_challenge = true;
-        ChallengeFailReplaceCard(CardType::kAmbassador);
-        // cp must lose a card. Still their move
-      } else {
-        op.lost_challenge = true;
-
-        // Block failed. Complete the steal
-        int numSteal = (op.coins > 1) ? 2 : 1;
-        cp.coins += numSteal;
-        op.coins -= numSteal;
-        // opp must lose a card
-        NextPlayerMove();
+        SpielFatalError("Invalid player action");
       }
 
     } else if (move >= (int)ActionType::kExchangeReturn12 &&
@@ -896,26 +861,23 @@ std::vector<Action> CoupState::LegalActions() const {
     // opponent's turn, so cur_player_move_ can
     // choose to block or challenge for certain actions
     if (op.last_action == ActionType::kForeignAid) {
-      legal = {(Action)ActionType::kPassFA, 
-               (Action)ActionType::kBlockFA};
+      legal = {(Action)ActionType::kPass, 
+               (Action)ActionType::kBlock};
       return legal;
-    } else if (op.last_action == ActionType::kTax) {
-      legal = {(Action)ActionType::kPassTax, 
-               (Action)ActionType::kChallengeTax};
-      return legal;
-    } else if (op.last_action == ActionType::kExchange) {
-      legal = {(Action)ActionType::kPassExchange,
-               (Action)ActionType::kChallengeExchange};
+    } else if (op.last_action == ActionType::kTax ||
+               op.last_action == ActionType::kExchange) {
+      legal = {(Action)ActionType::kPass, 
+               (Action)ActionType::kChallenge};
       return legal;
     } else if (op.last_action == ActionType::kSteal) {
-      legal = {(Action)ActionType::kPassSteal, 
-               (Action)ActionType::kBlockSteal,
-               (Action)ActionType::kChallengeSteal};
+      legal = {(Action)ActionType::kPass, 
+               (Action)ActionType::kBlock,
+               (Action)ActionType::kChallenge};
       return legal;
     } else if (op.last_action == ActionType::kAssassinate) {
       legal = LegalLoseCardActions();
-      legal.push_back((Action)ActionType::kBlockAssassinate);
-      legal.push_back((Action)ActionType::kChallengeAssassinate);
+      legal.push_back((Action)ActionType::kBlock);
+      legal.push_back((Action)ActionType::kChallenge);
       return legal;
     } else if (op.last_action == ActionType::kCoup) {
       legal = LegalLoseCardActions();
@@ -965,19 +927,9 @@ std::vector<Action> CoupState::LegalActions() const {
     }
     return legal;
 
-  } else if (op.last_action == ActionType::kBlockFA) {
-    legal = {(Action)ActionType::kPassFABlock,
-             (Action)ActionType::kChallengeFABlock};
-    return legal;
-
-  } else if (op.last_action == ActionType::kBlockAssassinate) {
-    legal = {(Action)ActionType::kPassAssassinateBlock,
-             (Action)ActionType::kChallengeAssassinateBlock};
-    return legal;
-
-  } else if (op.last_action == ActionType::kBlockSteal) {
-    legal = {(Action)ActionType::kPassStealBlock,
-             (Action)ActionType::kChallengeStealBlock};
+  } else if (op.last_action == ActionType::kBlock) {
+    legal = {(Action)ActionType::kPass,
+             (Action)ActionType::kChallenge};
     return legal;
 
   } else {

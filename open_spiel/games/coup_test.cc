@@ -110,10 +110,10 @@ void CoupPassForeignAidTest() {
   state->ApplyAction((Action)ActionType::kForeignAid);
   SPIEL_CHECK_EQ(state->CurrentPlayer(), 1);
   std::vector<Action> legal = state->LegalActions();
-  std::vector<Action> correct = {(Action)ActionType::kPassFA,
-                                 (Action)ActionType::kBlockFA};
+  std::vector<Action> correct = {(Action)ActionType::kPass,
+                                 (Action)ActionType::kBlock};
   SPIEL_CHECK_TRUE(legal == correct);
-  state->ApplyAction((Action)ActionType::kPassFA);
+  state->ApplyAction((Action)ActionType::kPass);
 
   SPIEL_CHECK_EQ(state->GetCoins(0), 3);
   SPIEL_CHECK_FALSE(state->IsTerminal());
@@ -137,13 +137,13 @@ void CoupBlockForeignAidTest() {
   state->ApplyAction((Action)CardType::kDuke);
 
   state->ApplyAction((Action)ActionType::kForeignAid);
-  state->ApplyAction((Action)ActionType::kBlockFA);
+  state->ApplyAction((Action)ActionType::kBlock);
   SPIEL_CHECK_EQ(state->CurrentPlayer(), 0);
   std::vector<Action> legal = state->LegalActions();
-  std::vector<Action> correct = {(Action)ActionType::kPassFABlock,
-                                 (Action)ActionType::kChallengeFABlock};
+  std::vector<Action> correct = {(Action)ActionType::kPass,
+                                 (Action)ActionType::kChallenge};
   SPIEL_CHECK_TRUE(legal == correct);
-  state->ApplyAction((Action)ActionType::kPassFABlock);
+  state->ApplyAction((Action)ActionType::kPass);
 
   SPIEL_CHECK_EQ(state->GetCoins(0), 1);
   SPIEL_CHECK_FALSE(state->IsTerminal());
@@ -167,8 +167,8 @@ void CoupChallengeForeignAidTest() {
   state->ApplyAction((Action)CardType::kAmbassador);
 
   state->ApplyAction((Action)ActionType::kForeignAid);
-  state->ApplyAction((Action)ActionType::kBlockFA);
-  state->ApplyAction((Action)ActionType::kChallengeFABlock);
+  state->ApplyAction((Action)ActionType::kBlock);
+  state->ApplyAction((Action)ActionType::kChallenge);
 
   // P2 didn't have a Duke, so must lose card
   SPIEL_CHECK_EQ(state->CurrentPlayer(), 1);
@@ -235,7 +235,7 @@ void CoupAssassinateTest() {
   state->ApplyAction((Action)CardType::kDuke);
 
   state->ApplyAction((Action)ActionType::kForeignAid);
-  state->ApplyAction((Action)ActionType::kPassFA);
+  state->ApplyAction((Action)ActionType::kPass);
   state->ApplyAction((Action)ActionType::kIncome);
   SPIEL_CHECK_EQ(state->CurrentPlayer(), 0);
   SPIEL_CHECK_EQ(state->GetCoins(0), 3);
@@ -245,8 +245,8 @@ void CoupAssassinateTest() {
   std::vector<Action> legal = state->LegalActions();
   std::vector<Action> correct = {(Action)ActionType::kLoseCard1,
                                  (Action)ActionType::kLoseCard2,
-                                 (Action)ActionType::kBlockAssassinate,
-                                 (Action)ActionType::kChallengeAssassinate};
+                                 (Action)ActionType::kBlock,
+                                 (Action)ActionType::kChallenge};
   SPIEL_CHECK_TRUE(legal == correct);
   state->ApplyAction((Action)ActionType::kLoseCard1);
 
@@ -273,10 +273,10 @@ void CoupDoubleAssassinateTest() {
   state->ApplyAction((Action)CardType::kDuke);
 
   state->ApplyAction((Action)ActionType::kForeignAid);
-  state->ApplyAction((Action)ActionType::kPassFA);
+  state->ApplyAction((Action)ActionType::kPass);
   state->ApplyAction((Action)ActionType::kIncome);
   state->ApplyAction((Action)ActionType::kAssassinate);
-  state->ApplyAction((Action)ActionType::kChallengeAssassinate);
+  state->ApplyAction((Action)ActionType::kChallenge);
   // P1 had an assassin, so P2 loses the challenge
   // Lose 1 card for assassinate, 1 for lost challenge,
   // therefore lose the game.
@@ -305,10 +305,10 @@ void CoupExchangeTest() {
   state->ApplyAction((Action)ActionType::kExchange);
   SPIEL_CHECK_EQ(state->CurrentPlayer(), 1);
   std::vector<Action> legal = state->LegalActions();
-  std::vector<Action> correct = {(Action)ActionType::kPassExchange,
-                                 (Action)ActionType::kChallengeExchange};
+  std::vector<Action> correct = {(Action)ActionType::kPass,
+                                 (Action)ActionType::kChallenge};
   SPIEL_CHECK_TRUE(legal == correct);
-  state->ApplyAction((Action)ActionType::kPassExchange);
+  state->ApplyAction((Action)ActionType::kPass);
 
   // Chance player deals 2 cards to P1
   SPIEL_CHECK_EQ(state->CurrentPlayer(), kChancePlayerId);
@@ -360,11 +360,11 @@ void CoupStealTest() {
 
   SPIEL_CHECK_EQ(state->CurrentPlayer(), 1);
   std::vector<Action> legal = state->LegalActions();
-  std::vector<Action> correct = {(Action)ActionType::kPassSteal,
-                                 (Action)ActionType::kBlockSteal,
-                                 (Action)ActionType::kChallengeSteal};
+  std::vector<Action> correct = {(Action)ActionType::kPass,
+                                 (Action)ActionType::kBlock,
+                                 (Action)ActionType::kChallenge};
   SPIEL_CHECK_TRUE(legal == correct);
-  state->ApplyAction((Action)ActionType::kPassSteal);
+  state->ApplyAction((Action)ActionType::kPass);
 
   SPIEL_CHECK_EQ(state->GetCoins(0), 3);
   SPIEL_CHECK_EQ(state->GetCoins(1), 0);
@@ -390,14 +390,14 @@ void CoupBlockStealTest() {
   state->ApplyAction((Action)CardType::kDuke);
 
   state->ApplyAction((Action)ActionType::kSteal);
-  state->ApplyAction((Action)ActionType::kBlockSteal);
+  state->ApplyAction((Action)ActionType::kBlock);
 
   SPIEL_CHECK_EQ(state->CurrentPlayer(), 0);
   std::vector<Action> legal = state->LegalActions();
-  std::vector<Action> correct = {(Action)ActionType::kPassStealBlock,
-                                 (Action)ActionType::kChallengeStealBlock};
+  std::vector<Action> correct = {(Action)ActionType::kPass,
+                                 (Action)ActionType::kChallenge};
   SPIEL_CHECK_TRUE(legal == correct);
-  state->ApplyAction((Action)ActionType::kChallengeStealBlock);
+  state->ApplyAction((Action)ActionType::kChallenge);
   // P2 had a Captain, so P2 showed it to prove it, and gets a new card
   SPIEL_CHECK_EQ(state->CurrentPlayer(), -1);
   state->ApplyAction((Action)CardType::kCaptain);
@@ -434,18 +434,18 @@ void CoupBlockAssassinateTest() {
   state->ApplyAction((Action)CardType::kContessa);
 
   state->ApplyAction((Action)ActionType::kForeignAid);
-  state->ApplyAction((Action)ActionType::kPassFA);
+  state->ApplyAction((Action)ActionType::kPass);
   state->ApplyAction((Action)ActionType::kIncome);
   SPIEL_CHECK_EQ(state->CurrentPlayer(), 0);
   state->ApplyAction((Action)ActionType::kAssassinate);
-  state->ApplyAction((Action)ActionType::kBlockAssassinate);
+  state->ApplyAction((Action)ActionType::kBlock);
 
   SPIEL_CHECK_EQ(state->CurrentPlayer(), 0);
   std::vector<Action> legal = state->LegalActions();
-  std::vector<Action> correct = {(Action)ActionType::kPassAssassinateBlock,
-                                 (Action)ActionType::kChallengeAssassinateBlock};
+  std::vector<Action> correct = {(Action)ActionType::kPass,
+                                 (Action)ActionType::kChallenge};
   SPIEL_CHECK_TRUE(legal == correct);
-  state->ApplyAction((Action)ActionType::kChallengeAssassinateBlock);
+  state->ApplyAction((Action)ActionType::kChallenge);
 
   // P2 had a Contessa, so P2 showed it to prove it, and gets a new card
   SPIEL_CHECK_EQ(state->CurrentPlayer(), -1);
@@ -482,10 +482,10 @@ void CoupTaxTest() {
 
   SPIEL_CHECK_EQ(state->CurrentPlayer(), 1);
   std::vector<Action> legal = state->LegalActions();
-  std::vector<Action> correct = {(Action)ActionType::kPassTax,
-                                 (Action)ActionType::kChallengeTax};
+  std::vector<Action> correct = {(Action)ActionType::kPass,
+                                 (Action)ActionType::kChallenge};
   SPIEL_CHECK_TRUE(legal == correct);
-  state->ApplyAction((Action)ActionType::kPassTax);
+  state->ApplyAction((Action)ActionType::kPass);
 
   SPIEL_CHECK_EQ(state->GetCoins(0), 4);
   SPIEL_CHECK_EQ(state->CurrentPlayer(), 1);
@@ -510,14 +510,14 @@ void CoupChallengeBlockForeignAidTest() {
   state->ApplyAction((Action)CardType::kDuke);
 
   state->ApplyAction((Action)ActionType::kForeignAid);
-  state->ApplyAction((Action)ActionType::kBlockFA);
+  state->ApplyAction((Action)ActionType::kBlock);
   
   SPIEL_CHECK_EQ(state->CurrentPlayer(), 0);
   std::vector<Action> legal = state->LegalActions();
-  std::vector<Action> correct = {(Action)ActionType::kPassFABlock,
-                                 (Action)ActionType::kChallengeFABlock};
+  std::vector<Action> correct = {(Action)ActionType::kPass,
+                                 (Action)ActionType::kChallenge};
   SPIEL_CHECK_TRUE(legal == correct);
-  state->ApplyAction((Action)ActionType::kChallengeFABlock);
+  state->ApplyAction((Action)ActionType::kChallenge);
 
   // P2 had a Duke, so P2 showed it to prove it, and gets a new card
   SPIEL_CHECK_EQ(state->CurrentPlayer(), -1);

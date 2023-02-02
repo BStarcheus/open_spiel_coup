@@ -73,29 +73,15 @@ enum class ActionType : Action {
   kSteal                     = 6,
   kLoseCard1                 = 7,
   kLoseCard2                 = 8,
-  kPassFA                    = 9,
-  kPassFABlock               = 10,
-  kPassTax                   = 11,
-  kPassExchange              = 12,
-  kPassAssassinateBlock      = 13,
-  kPassSteal                 = 14,
-  kPassStealBlock            = 15,
-  kBlockFA                   = 16,
-  kBlockAssassinate          = 17,
-  kBlockSteal                = 18,
-  kChallengeFABlock          = 19,
-  kChallengeTax              = 20,
-  kChallengeExchange         = 21,
-  kChallengeAssassinate      = 22,
-  kChallengeAssassinateBlock = 23,
-  kChallengeSteal            = 24,
-  kChallengeStealBlock       = 25,
-  kExchangeReturn12          = 26,
-  kExchangeReturn13          = 27,
-  kExchangeReturn14          = 28,
-  kExchangeReturn23          = 29,
-  kExchangeReturn24          = 30,
-  kExchangeReturn34          = 31
+  kPass                      = 9,
+  kBlock                     = 10,
+  kChallenge                 = 11,
+  kExchangeReturn12          = 12,
+  kExchangeReturn13          = 13,
+  kExchangeReturn14          = 14,
+  kExchangeReturn23          = 15,
+  kExchangeReturn24          = 16,
+  kExchangeReturn34          = 17
 };
 
 struct CoupCard {
@@ -214,7 +200,7 @@ class CoupGame : public Game {
  public:
   explicit CoupGame(const GameParameters& params);
 
-  int NumDistinctActions() const override { return 32; }
+  int NumDistinctActions() const override { return 18; }
   std::unique_ptr<State> NewInitialState() const override;
   int MaxChanceOutcomes() const override { return kNumCardTypes; }
   int NumPlayers() const override { return kNumPlayers; }
