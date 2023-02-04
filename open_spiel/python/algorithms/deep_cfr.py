@@ -25,6 +25,7 @@ train the networks.
 
 import collections
 import random
+import os
 import numpy as np
 import tensorflow.compat.v1 as tf
 
@@ -247,6 +248,15 @@ class DeepCFRSolver(policy.Policy):
           tf.train.AdamOptimizer(learning_rate=learning_rate))
       self._learn_step_advantages.append(self._optimizer_advantages[p].minimize(
           self._loss_advantages[p]))
+
+  def save_policy_network(self, folder):
+    """Saves the policy network to the given folder."""
+    os.makedirs(folder, exist_ok=True)
+    self._policy_network.save(folder)
+
+  def restore_policy_network(self, folder):
+    """Restores the policy network from the given folder."""
+    self._policy_network.restore(folder)
 
   @property
   def advantage_buffers(self):
