@@ -208,19 +208,9 @@ class DeepCFRSolver(policy.Policy):
 
     # Define strategy network, loss & memory.
     self._strategy_memories = ReservoirBuffer(memory_capacity)
-    self._policy_network = simple_nets.MLP(self._embedding_size,
-                                           list(policy_network_layers),
-                                           self._num_actions)
-    action_logits = self._policy_network(self._info_state_ph)
-    # Illegal actions are handled in the traversal code where expected payoff
-    # and sampled regret is computed from the advantage networks.
-    self._action_probs = tf.nn.softmax(action_logits)
-    self._loss_policy = tf.reduce_mean(
-        tf.losses.mean_squared_error(
-            labels=tf.math.sqrt(self._iter_ph) * self._action_probs_ph,
-            predictions=tf.math.sqrt(self._iter_ph) * self._action_probs))
-    self._optimizer_policy = tf.train.AdamOptimizer(learning_rate=learning_rate)
-    self._learn_step_policy = self._optimizer_policy.minimize(self._loss_policy)
+    self._learning_rate = learning_rate
+    self._policy_network_layers = policy_network_layers
+    self._reinitialize_policy_network()
 
     # Define advantage network, loss & memory. (One per player)
     self._advantage_memories = [
@@ -248,6 +238,22 @@ class DeepCFRSolver(policy.Policy):
           tf.train.AdamOptimizer(learning_rate=learning_rate))
       self._learn_step_advantages.append(self._optimizer_advantages[p].minimize(
           self._loss_advantages[p]))
+
+  def _reinitialize_policy_network(self):
+    """Reinitalize policy network and optimizer for training."""
+    self._policy_network = simple_nets.MLP(self._embedding_size,
+                                           list(self._policy_network_layers),
+                                           self._num_actions)
+    action_logits = self._policy_network(self._info_state_ph)
+    # Illegal actions are handled in the traversal code where expected payoff
+    # and sampled regret is computed from the advantage networks.
+    self._action_probs = tf.nn.softmax(action_logits)
+    self._loss_policy = tf.reduce_mean(
+        tf.losses.mean_squared_error(
+            labels=tf.math.sqrt(self._iter_ph) * self._action_probs_ph,
+            predictions=tf.math.sqrt(self._iter_ph) * self._action_probs))
+    self._optimizer_policy = tf.train.AdamOptimizer(learning_rate=self._learning_rate)
+    self._learn_step_policy = self._optimizer_policy.minimize(self._loss_policy)
 
   def save_policy_network(self, folder):
     """Saves the policy network to the given folder."""
