@@ -12,7 +12,7 @@ from open_spiel.python.bots.human import HumanBot
 from open_spiel.python import rl_environment
 from open_spiel.python.algorithms import deep_cfr, nfsp
 import pyspiel
-import np
+import numpy as np
 
 # Temporarily disable TF2 behavior until we update the code.
 tf.disable_v2_behavior()
@@ -112,7 +112,7 @@ class NFSPPolicies(pol.Policy):
     prob_dict = {action: p[action] for action in legal_actions}
     return prob_dict
 
-def main():
+def main(_):
   game = pyspiel.load_game(FLAGS.game)
   with tf.Session() as sess:
     if FLAGS.algo == "deep_cfr":

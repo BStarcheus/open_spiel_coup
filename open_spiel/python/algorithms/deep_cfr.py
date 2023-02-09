@@ -380,7 +380,7 @@ class DeepCFRSolver(policy.Policy):
                       eval_every=self._eval_test_every,
                       eval_episodes=self._eval_test_episodes)
     if self._use_checkpoints:
-      self.save_policy_network(self._checkpoint_dir, f"iter{self._iteration}")
+      self.save_policy_network(self._checkpoint_dir, f"iter{self._iteration-1}")
     return self._policy_network, advantage_losses, policy_loss
 
   def get_environment_steps(self):
@@ -481,7 +481,7 @@ class DeepCFRSolver(policy.Policy):
 
     return advantages, matched_regrets
 
-  def action_probabilities(self, state):
+  def action_probabilities(self, state, player_id=None):
     """Returns action probabilities dict for a single batch."""
     cur_player = state.current_player()
     legal_actions = state.legal_actions(cur_player)

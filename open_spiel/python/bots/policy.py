@@ -15,7 +15,7 @@
 """A bot that samples from legal actions based on a policy."""
 
 import pyspiel
-
+import numpy as np
 
 class PolicyBot(pyspiel.Bot):
   """Samples an action from action probabilities based on a policy.
@@ -64,7 +64,9 @@ class PolicyBot(pyspiel.Bot):
     if not any(action_list):
       return [], pyspiel.INVALID_ACTION
 
-    action = self._rng.choice(action_list, p=list(policy.values()))
+    probs = np.array(list(policy.values()))
+    probs /= probs.sum()
+    action = self._rng.choice(action_list, p=probs)
     return list(policy.items()), action
 
   def step(self, state):
