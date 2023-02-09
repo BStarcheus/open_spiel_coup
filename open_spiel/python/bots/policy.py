@@ -64,9 +64,7 @@ class PolicyBot(pyspiel.Bot):
     if not any(action_list):
       return [], pyspiel.INVALID_ACTION
 
-    probs = np.array(list(policy.values()))
-    probs /= probs.sum()
-    action = self._rng.choice(action_list, p=probs)
+    action = self._rng.choice(action_list, p=list(policy.values()))
     return list(policy.items()), action
 
   def step(self, state):

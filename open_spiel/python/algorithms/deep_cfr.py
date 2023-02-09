@@ -490,7 +490,12 @@ class DeepCFRSolver(policy.Policy):
       info_state_vector = np.expand_dims(info_state_vector, axis=0)
     probs = self._session.run(
         self._action_probs, feed_dict={self._info_state_ph: info_state_vector})
-    return {action: probs[0][action] for action in legal_actions}
+    
+    # Remove illegal actions, normalize probs
+    legal_probs = np.zeros(self._num_actions)
+    legal_probs[legal_actions] = probs[0][legal_actions]
+    legal_probs /= sum(legal_probs)
+    return {action: legal_probs[action] for action in legal_actions}
 
   def _learn_advantage_network(self, player):
     """Compute the loss on sampled transitions and perform a Q-network update.

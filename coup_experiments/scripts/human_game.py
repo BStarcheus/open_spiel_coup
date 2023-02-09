@@ -86,13 +86,13 @@ class NFSPPolicies(pol.Policy):
 
   def __init__(self, env, nfsp_policies, mode):
     game = env.game
-    player_ids = list(range(FLAGS.num_players))
+    player_ids = list(range(2))
     super(NFSPPolicies, self).__init__(game, player_ids)
     self._policies = nfsp_policies
     self._mode = mode
     self._obs = {
-        "info_state": [None] * FLAGS.num_players,
-        "legal_actions": [None] * FLAGS.num_players
+        "info_state": [None] * 2,
+        "legal_actions": [None] * 2
     }
 
   def action_probabilities(self, state, player_id=None):
