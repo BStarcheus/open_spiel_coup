@@ -55,7 +55,14 @@ flags.DEFINE_integer("advantage_network_train_steps", 20,
                      "Number of advantage network training steps.")
 flags.DEFINE_bool("reinitialize_advantage_networks", False,
                   "Reinit advantage network before training each iter.")
+flags.DEFINE_bool("use_checkpoints", True, "Save/load neural network weights.")
+flags.DEFINE_string("checkpoint_dir", "/tmp/deep_cfr",
+                    "Directory to save/load the agent.")
+flags.DEFINE_integer("save_every", 10,
+                     "Iteration frequency to save the networks. Must be multiple of eval_every.")
 
+flags.DEFINE_integer("eval_every", 10,
+                     "Iteration frequency at which the agents are evaluated.")
 flags.DEFINE_integer("rl_resp_train_episodes", 10000,
                      "Number of training episodes for rl_resp model")
 flags.DEFINE_integer("rl_resp_eval_every", 1000,
@@ -71,7 +78,7 @@ def main(unused_argv):
   log_flags(FLAGS, ["num_iterations", "num_traversals", "policy_network_layers",
       "advantage_network_layers", "learning_rate", "batch_size_advantage",
       "batch_size_strategy", "memory_capacity", "policy_network_train_steps",
-      "advantage_network_train_steps", "reinitialize_advantage_networks",
+      "advantage_network_train_steps", "reinitialize_advantage_networks", "eval_every",
       "rl_resp_train_episodes", "rl_resp_eval_every", "rl_resp_eval_episodes"])
   logging.info("Loading %s", FLAGS.game_name)
   game = pyspiel.load_game(FLAGS.game_name)
@@ -92,7 +99,15 @@ def main(unused_argv):
         policy_network_train_steps=FLAGS.policy_network_train_steps,
         advantage_network_train_steps=FLAGS.advantage_network_train_steps,
         reinitialize_advantage_networks=FLAGS.reinitialize_advantage_networks,
-        sampling_method="outcome")
+        sampling_method="outcome",
+        eval_func=rl_resp,
+        eval_every=FLAGS.eval_every,
+        eval_train_episodes=FLAGS.rl_resp_train_episodes,
+        eval_test_every=FLAGS.rl_resp_eval_every,
+        eval_test_episodes=FLAGS.rl_resp_eval_episodes,
+        use_checkpoints=FLAGS.use_checkpoints,
+        checkpoint_dir=FLAGS.checkpoint_dir,
+        save_every=FLAGS.save_every)
     sess.run(tf.global_variables_initializer())
     start = time.time()
     first_start = start
@@ -111,14 +126,14 @@ def main(unused_argv):
     # average_policy = policy.tabular_policy_from_callable(
     #     game, deep_cfr_solver.action_probabilities)
 
-    start = time.time()
-    rl_resp(exploitee=deep_cfr_solver,
-            num_train_episodes=FLAGS.rl_resp_train_episodes,
-            eval_every=FLAGS.rl_resp_eval_every,
-            eval_episodes=FLAGS.rl_resp_eval_episodes)
+    # start = time.time()
+    # rl_resp(exploitee=deep_cfr_solver,
+    #         num_train_episodes=FLAGS.rl_resp_train_episodes,
+    #         eval_every=FLAGS.rl_resp_eval_every,
+    #         eval_episodes=FLAGS.rl_resp_eval_episodes)
     final_end = time.time()
-    delta = final_end - start
-    logging.info("rl_resp run time: %s sec", delta)
+    # delta = final_end - start
+    # logging.info("rl_resp run time: %s sec", delta)
     total_time = final_end - first_start
     logging.info("Total run time: %s sec", total_time)
 

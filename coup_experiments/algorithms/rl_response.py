@@ -37,10 +37,6 @@ if __name__ == "__main__":
   FLAGS = flags.FLAGS
 
   # Training parameters
-  flags.DEFINE_string("checkpoint_dir", "/tmp/dqn_test",
-                      "Directory to save/load the agent models.")
-  flags.DEFINE_integer("save_every", int(1e4),
-                       "Episode freq at which the DQN agent models are saved.")
   flags.DEFINE_integer("num_train_episodes", int(1e6),
                        "Number of training episodes.")
   flags.DEFINE_integer("eval_every", 1000,
@@ -177,7 +173,6 @@ class RollingAverage(object):
 
 def rl_resp(game="coup", exploitee="random", seed=0, window_size=30,
             # Training parameters
-            checkpoint_dir="/tmp/dqn_test", save_every=10000,
             num_train_episodes=1000000, eval_every=1000, eval_episodes=1000,
             # DQN model hyper-parameters
             replay_buffer_capacity=100000, batch_size=32, hidden_layers_sizes=None):
@@ -275,9 +270,9 @@ def rl_resp(game="coup", exploitee="random", seed=0, window_size=30,
 def main(_):
   # If running as script use the flags
   rl_resp(FLAGS.game, FLAGS.exploitee, FLAGS.seed, FLAGS.window_size,
-          FLAGS.checkpoint_dir, FLAGS.save_every, FLAGS.num_train_episodes,
-          FLAGS.eval_every, FLAGS.eval_episodes, FLAGS.replay_buffer_capacity,
-          FLAGS.batch_size, FLAGS.hidden_layers_sizes)
+          FLAGS.num_train_episodes, FLAGS.eval_every, FLAGS.eval_episodes,
+          FLAGS.replay_buffer_capacity, FLAGS.batch_size,
+          FLAGS.hidden_layers_sizes)
 
 if __name__ == "__main__":
   app.run(main)

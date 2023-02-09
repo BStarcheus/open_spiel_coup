@@ -278,7 +278,7 @@ class NFSP(rl_agent.AbstractAgent):
     checkpoint_filename = "_".join([name, "pid" + str(self.player_id)])
     return checkpoint_filename + "_latest"
 
-  def save(self, checkpoint_dir):
+  def save(self, checkpoint_dir, checkpoint_id):
     """Saves the average policy network and the inner RL agent's q-network.
 
     Note that this does not save the experience replay buffers and should
@@ -288,22 +288,24 @@ class NFSP(rl_agent.AbstractAgent):
       checkpoint_dir: directory where checkpoints will be saved.
     """
     for name, saver in self._savers:
+      filename = name + checkpoint_id
       path = saver.save(
           self._session,
-          self._full_checkpoint_name(checkpoint_dir, name),
-          latest_filename=self._latest_checkpoint_filename(name))
+          self._full_checkpoint_name(checkpoint_dir, filename),
+          latest_filename=self._latest_checkpoint_filename(filename))
       logging.info("Saved to path: %s", path)
 
-  def has_checkpoint(self, checkpoint_dir):
+  def has_checkpoint(self, checkpoint_dir, checkpoint_id):
     for name, _ in self._savers:
+      filename = name + checkpoint_id
       if tf.train.latest_checkpoint(
-          self._full_checkpoint_name(checkpoint_dir, name),
+          self._full_checkpoint_name(checkpoint_dir, filename),
           os.path.join(checkpoint_dir,
-                       self._latest_checkpoint_filename(name))) is None:
+                       self._latest_checkpoint_filename(filename))) is None:
         return False
     return True
 
-  def restore(self, checkpoint_dir):
+  def restore(self, checkpoint_dir, checkpoint_id):
     """Restores the average policy network and the inner RL agent's q-network.
 
     Note that this does not restore the experience replay buffers and should
@@ -313,7 +315,8 @@ class NFSP(rl_agent.AbstractAgent):
       checkpoint_dir: directory from which checkpoints will be restored.
     """
     for name, saver in self._savers:
-      full_checkpoint_dir = self._full_checkpoint_name(checkpoint_dir, name)
+      filename = name + checkpoint_id
+      full_checkpoint_dir = self._full_checkpoint_name(checkpoint_dir, filename)
       logging.info("Restoring checkpoint: %s", full_checkpoint_dir)
       saver.restore(self._session, full_checkpoint_dir)
 

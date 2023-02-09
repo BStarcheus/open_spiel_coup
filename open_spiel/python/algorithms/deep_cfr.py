@@ -33,6 +33,8 @@ from open_spiel.python import policy
 from open_spiel.python import simple_nets
 import pyspiel
 
+from absl import logging
+
 # Temporarily Disable TF2 behavior until we update the code.
 tf.disable_v2_behavior()
 
@@ -129,7 +131,15 @@ class DeepCFRSolver(policy.Policy):
                advantage_network_train_steps: int = 1,
                reinitialize_advantage_networks: bool = True,
                sampling_method='external',
-               outcome_samp_expl=0.6):
+               outcome_samp_expl=0.6,
+               eval_func=None,
+               eval_every=10,
+               eval_train_episodes=10000,
+               eval_test_every=5000,
+               eval_test_episodes=1000,
+               use_checkpoints=False,
+               checkpoint_dir=None,
+               save_every=None):
     """Initialize the Deep CFR algorithm.
 
     Args:
@@ -155,6 +165,15 @@ class DeepCFRSolver(policy.Policy):
       outcome_samp_expl: Epsilon exploration factor for outcome sampling.
         When sampling episodes, the updating player will sample according to
         expl * uniform + (1 - expl) * current_policy.
+      eval_func: Evaluation function, rl_resp
+      eval_every: Iteration frequency to evaluate the agent
+      eval_train_episodes: Number of training episodes in eval
+      eval_test_every: Test eval agent every x episodes
+      eval_test_episodes: Number of test episodes in eval
+      use_checkpoints: Whether to save the policy network every so often
+      checkpoint_dir: Where to save the policy network
+      save_every: Iteration frequency to save the policy network. 
+        Must be a multiple of eval_every (because of solve() impl)
     """
     all_players = list(range(game.num_players()))
     super(DeepCFRSolver, self).__init__(game, all_players)
@@ -182,6 +201,17 @@ class DeepCFRSolver(policy.Policy):
       raise ValueError(f'Unknown sampling method \'{sampling_method}\'.')
     self._sampling_method = sampling_method
     self._expl = outcome_samp_expl
+
+    # Evaluation every so many iterations
+    self._eval_func = eval_func
+    self._eval_every = eval_every
+    self._eval_train_episodes = eval_train_episodes
+    self._eval_test_every = eval_test_every
+    self._eval_test_episodes = eval_test_episodes
+    # Save the policy every so many iterations
+    self._use_checkpoints = use_checkpoints
+    self._checkpoint_dir = checkpoint_dir
+    self._save_every = save_every
 
     # Create required TensorFlow placeholders to perform the Q-network updates.
     self._info_state_ph = tf.placeholder(
@@ -255,14 +285,41 @@ class DeepCFRSolver(policy.Policy):
     self._optimizer_policy = tf.train.AdamOptimizer(learning_rate=self._learning_rate)
     self._learn_step_policy = self._optimizer_policy.minimize(self._loss_policy)
 
-  def save_policy_network(self, folder):
-    """Saves the policy network to the given folder."""
-    os.makedirs(folder, exist_ok=True)
-    self._policy_network.save(folder)
+    self._saver = ("policy_network", tf.train.Saver(self._policy_network.variables))
 
-  def restore_policy_network(self, folder):
+  def _full_checkpoint_name(self, checkpoint_dir, name):
+    return os.path.join(checkpoint_dir, name)
+
+  def _latest_checkpoint_filename(self, name):
+    return name + "_latest"
+
+  def save_policy_network(self, checkpoint_dir, checkpoint_id):
+    """Saves the policy network to the given folder."""
+    name, saver = self._saver
+    filename = name + checkpoint_id
+    path = saver.save(
+        self._session,
+        self._full_checkpoint_name(checkpoint_dir, filename),
+        latest_filename=self._latest_checkpoint_filename(filename))
+    logging.info("Saved to path: %s", path)
+
+  def has_checkpoint(self, checkpoint_dir, checkpoint_id):
+    name, _ = self._saver
+    filename = name + checkpoint_id
+    if tf.train.latest_checkpoint(
+        self._full_checkpoint_name(checkpoint_dir, filename),
+        os.path.join(checkpoint_dir,
+                      self._latest_checkpoint_filename(filename))) is None:
+      return False
+    return True
+
+  def restore_policy_network(self, checkpoint_dir, checkpoint_id):
     """Restores the policy network from the given folder."""
-    self._policy_network.restore(folder)
+    name, saver = self._saver:
+    filename = name + checkpoint_id
+    full_checkpoint_dir = self._full_checkpoint_name(checkpoint_dir, filename)
+    logging.info("Restoring checkpoint: %s", full_checkpoint_dir)
+    saver.restore(self._session, full_checkpoint_dir) 
 
   @property
   def advantage_buffers(self):
@@ -299,8 +356,30 @@ class DeepCFRSolver(policy.Policy):
           self.reinitialize_advantage_network(p)
         advantage_losses[p].append(self._learn_advantage_network(p))
       self._iteration += 1
-    # Train policy network.
+      
+      if (self._eval_func is not None and
+          self._iteration % self._eval_every == 0 and
+          self._iteration != self._num_iterations):
+        # Evaluate the current agent
+        policy_loss = self._learn_strategy_network()
+        logging.info(f'Policy loss: {policy_loss}')
+        self._eval_func(num_train_episodes=self._eval_train_episodes,
+                        eval_every=self._eval_test_every,
+                        eval_episodes=self._eval_test_episodes)
+
+        if self._use_checkpoints and self._iteration % self._save_every == 0:
+          self.save_policy_network(self._checkpoint_dir, f"iter{self._iteration}")
+        self._reinitialize_policy_network()
+
+    # Final train policy network.
     policy_loss = self._learn_strategy_network()
+    # eval and save final policy
+    if self._eval_func is not None:
+      self._eval_func(num_train_episodes=self._eval_train_episodes,
+                      eval_every=self._eval_test_every,
+                      eval_episodes=self._eval_test_episodes)
+    if self._use_checkpoints:
+      self.save_policy_network(self._checkpoint_dir, f"iter{self._iteration}")
     return self._policy_network, advantage_losses, policy_loss
 
   def get_environment_steps(self):

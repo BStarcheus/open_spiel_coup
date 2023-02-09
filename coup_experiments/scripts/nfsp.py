@@ -35,8 +35,6 @@ flags.DEFINE_integer("num_players", 2,
                      "Number of players.")
 flags.DEFINE_integer("num_train_episodes", 1000000,
                      "Number of training episodes.")
-flags.DEFINE_integer("eval_every", 10000,
-                     "Episode frequency at which the agents are evaluated.")
 flags.DEFINE_list("hidden_layers_sizes", [128,], 
                   "Number of hidden units in the avg-net and Q-net.")
 flags.DEFINE_integer("replay_buffer_capacity", int(2e5),
@@ -70,9 +68,13 @@ flags.DEFINE_float("epsilon_start", 0.06,
 flags.DEFINE_float("epsilon_end", 0.001,
                    "Final exploration parameter.")
 flags.DEFINE_bool("use_checkpoints", True, "Save/load neural network weights.")
-flags.DEFINE_string("checkpoint_dir", "/tmp/nfsp_test",
+flags.DEFINE_string("checkpoint_dir", "/tmp/nfsp",
                     "Directory to save/load the agent.")
+flags.DEFINE_integer("save_every", 10000,
+                     "How often to save the networks. Must be multiple of eval_every.")
 
+flags.DEFINE_integer("eval_every", 10000,
+                     "Episode frequency at which the agents are evaluated.")
 flags.DEFINE_integer("rl_resp_train_episodes", 10000,
                      "Number of training episodes for rl_resp model")
 flags.DEFINE_integer("rl_resp_eval_every", 1000,
@@ -116,13 +118,13 @@ class NFSPPolicies(policy.Policy):
 def main(unused_argv):
   if len(FLAGS.log_file):
     log_to_file(FLAGS.log_file)
-  log_flags(FLAGS, ["num_train_episodes", "eval_every", "hidden_layers_sizes",
+  log_flags(FLAGS, ["num_train_episodes", "hidden_layers_sizes",
       "replay_buffer_capacity", "reservoir_buffer_capacity", 
       "min_buffer_size_to_learn", "anticipatory_param", "batch_size",
       "learn_every", "rl_learning_rate", "sl_learning_rate",
       "update_target_network_every", "epsilon_decay_duration", "epsilon_start",
-      "epsilon_end", "rl_resp_train_episodes", "rl_resp_eval_every",
-      "rl_resp_eval_episodes"])
+      "epsilon_end", "eval_every", "rl_resp_train_episodes",
+      "rl_resp_eval_every", "rl_resp_eval_episodes"])
   logging.info("Loading %s", FLAGS.game_name)
   game = FLAGS.game_name
   num_players = FLAGS.num_players
@@ -160,14 +162,26 @@ def main(unused_argv):
 
     sess.run(tf.global_variables_initializer())
 
-    if FLAGS.use_checkpoints:
-      for agent in agents:
-        if agent.has_checkpoint(FLAGS.checkpoint_dir):
-          agent.restore(FLAGS.checkpoint_dir)
+    # if FLAGS.use_checkpoints:
+    #   for agent in agents:
+    #     if agent.has_checkpoint(FLAGS.checkpoint_dir):
+    #       agent.restore(FLAGS.checkpoint_dir)
 
     total_rl_resp_time = 0
     first_start = time.time()
     for ep in range(FLAGS.num_train_episodes):
+      time_step = env.reset()
+      while not time_step.last():
+        player_id = time_step.observations["current_player"]
+        agent_output = agents[player_id].step(time_step)
+        action_list = [agent_output.action]
+        time_step = env.step(action_list)
+
+      # Episode is over, step all agents with final info state.
+      for agent in agents:
+        agent.step(time_step)
+
+      # Evaluation
       if (ep + 1) % FLAGS.eval_every == 0:
         losses = [agent.loss for agent in agents]
         logging.info("Losses: %s", losses)
@@ -181,21 +195,10 @@ def main(unused_argv):
         total_rl_resp_time += delta
         logging.info("rl_resp run time: %s sec", delta)
 
-        if FLAGS.use_checkpoints:
+        if FLAGS.use_checkpoints and (ep + 1) % FLAGS.save_every == 0:
           for agent in agents:
-            agent.save(FLAGS.checkpoint_dir)
+            agent.save(FLAGS.checkpoint_dir, f"ep{ep+1}")
         logging.info("_____________________________________________")
-
-      time_step = env.reset()
-      while not time_step.last():
-        player_id = time_step.observations["current_player"]
-        agent_output = agents[player_id].step(time_step)
-        action_list = [agent_output.action]
-        time_step = env.step(action_list)
-
-      # Episode is over, step all agents with final info state.
-      for agent in agents:
-        agent.step(time_step)
     
     total_time = time.time() - first_start
     logging.info("Total algo run time: %s sec", total_time - total_rl_resp_time)
