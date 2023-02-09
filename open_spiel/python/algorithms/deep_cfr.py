@@ -494,7 +494,7 @@ class DeepCFRSolver(policy.Policy):
     # Remove illegal actions, normalize probs
     legal_probs = np.zeros(self._num_actions)
     legal_probs[legal_actions] = probs[0][legal_actions]
-    legal_probs /= sum(legal_probs)
+    legal_probs /= legal_probs.sum()
     return {action: legal_probs[action] for action in legal_actions}
 
   def _learn_advantage_network(self, player):
