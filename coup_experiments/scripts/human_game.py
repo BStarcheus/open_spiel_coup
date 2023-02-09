@@ -22,6 +22,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string("game", "coup", "Game name")
 flags.DEFINE_string("algo", "deep_cfr", "Algorithm which has a saved model in the given directory. deep_cfr or nfsp")
 flags.DEFINE_string("saved_dir", "/agents/deep_cfr/", "Directory with saved model")
+flags.DEFINE_string("checkpoint_id", "iter10", "The ID of the checkpoint. deep_cfr: iter{iter-num}, nfsp: ep{ep-num}")
 
 # Deep CFR
 flags.DEFINE_integer("num_iterations", 100, "Number of iterations")
@@ -133,7 +134,7 @@ def main():
           reinitialize_advantage_networks=FLAGS.reinitialize_advantage_networks,
           sampling_method="outcome")
       sess.run(tf.global_variables_initializer())
-      deep_cfr_solver.restore_policy_network(FLAGS.saved_dir)
+      deep_cfr_solver.restore_policy_network(FLAGS.saved_dir, FLAGS.checkpoint_id)
       bot = PolicyBot(1, np.random.RandomState(4321), deep_cfr_solver)
 
     elif FLAGS.algo == "nfsp":
@@ -165,7 +166,7 @@ def main():
       ]
       joint_avg_policy = NFSPPolicies(env, agents, nfsp.MODE.average_policy)
       for agent in agents:
-        agent.restore(FLAGS.saved_dir)
+        agent.restore(FLAGS.saved_dir, FLAGS.checkpoint_id)
 
       bot = PolicyBot(1, np.random.RandomState(4321), joint_avg_policy)
 
@@ -177,7 +178,7 @@ def main():
     players = [human, bot]
 
     state = game.new_initial_state()
-    print(state.observation_string())
+    print(state.observation_string(0))
     while not state.is_terminal():
       if state.is_chance_node():
         # Sample chance
@@ -191,7 +192,7 @@ def main():
         action = p.step(state)
         state.apply_action(action)
       
-      print(state.observation_string())
+      print(state.observation_string(0))
 
 
 if __name__ == "__main__":
