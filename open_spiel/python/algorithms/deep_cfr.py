@@ -315,7 +315,7 @@ class DeepCFRSolver(policy.Policy):
 
   def restore_policy_network(self, checkpoint_dir, checkpoint_id):
     """Restores the policy network from the given folder."""
-    name, saver = self._saver:
+    name, saver = self._saver
     filename = name + checkpoint_id
     full_checkpoint_dir = self._full_checkpoint_name(checkpoint_dir, filename)
     logging.info("Restoring checkpoint: %s", full_checkpoint_dir)
