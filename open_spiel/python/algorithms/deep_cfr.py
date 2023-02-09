@@ -238,9 +238,21 @@ class DeepCFRSolver(policy.Policy):
 
     # Define strategy network, loss & memory.
     self._strategy_memories = ReservoirBuffer(memory_capacity)
-    self._learning_rate = learning_rate
-    self._policy_network_layers = policy_network_layers
-    self._reinitialize_policy_network()
+    self._policy_network = simple_nets.MLP(self._embedding_size,
+                                           list(policy_network_layers),
+                                           self._num_actions)
+    action_logits = self._policy_network(self._info_state_ph)
+    # Illegal actions are handled in the traversal code where expected payoff
+    # and sampled regret is computed from the advantage networks.
+    self._action_probs = tf.nn.softmax(action_logits)
+    self._loss_policy = tf.reduce_mean(
+        tf.losses.mean_squared_error(
+            labels=tf.math.sqrt(self._iter_ph) * self._action_probs_ph,
+            predictions=tf.math.sqrt(self._iter_ph) * self._action_probs))
+    self._optimizer_policy = tf.train.AdamOptimizer(learning_rate=learning_rate)
+    self._learn_step_policy = self._optimizer_policy.minimize(self._loss_policy)
+
+    self._saver = ("policy_network", tf.train.Saver(self._policy_network.variables))
 
     # Define advantage network, loss & memory. (One per player)
     self._advantage_memories = [
@@ -268,24 +280,6 @@ class DeepCFRSolver(policy.Policy):
           tf.train.AdamOptimizer(learning_rate=learning_rate))
       self._learn_step_advantages.append(self._optimizer_advantages[p].minimize(
           self._loss_advantages[p]))
-
-  def _reinitialize_policy_network(self):
-    """Reinitalize policy network and optimizer for training."""
-    self._policy_network = simple_nets.MLP(self._embedding_size,
-                                           list(self._policy_network_layers),
-                                           self._num_actions)
-    action_logits = self._policy_network(self._info_state_ph)
-    # Illegal actions are handled in the traversal code where expected payoff
-    # and sampled regret is computed from the advantage networks.
-    self._action_probs = tf.nn.softmax(action_logits)
-    self._loss_policy = tf.reduce_mean(
-        tf.losses.mean_squared_error(
-            labels=tf.math.sqrt(self._iter_ph) * self._action_probs_ph,
-            predictions=tf.math.sqrt(self._iter_ph) * self._action_probs))
-    self._optimizer_policy = tf.train.AdamOptimizer(learning_rate=self._learning_rate)
-    self._learn_step_policy = self._optimizer_policy.minimize(self._loss_policy)
-
-    self._saver = ("policy_network", tf.train.Saver(self._policy_network.variables))
 
   def _full_checkpoint_name(self, checkpoint_dir, name):
     return os.path.join(checkpoint_dir, name)
@@ -344,6 +338,13 @@ class DeepCFRSolver(policy.Policy):
             for var in self._advantage_networks[player].variables
         ]))
 
+  def _reinitialize_policy_network(self):
+    self._session.run(
+        tf.group(*[
+            var.initializer
+            for var in self._policy_network.variables
+        ]))
+
   def solve(self):
     """Solution logic for Deep CFR."""
     advantage_losses = collections.defaultdict(list)
@@ -355,8 +356,7 @@ class DeepCFRSolver(policy.Policy):
           # Re-initialize advantage network for player and train from scratch.
           self.reinitialize_advantage_network(p)
         advantage_losses[p].append(self._learn_advantage_network(p))
-      self._iteration += 1
-      
+
       if (self._eval_func is not None and
           self._iteration % self._eval_every == 0 and
           self._iteration != self._num_iterations):
@@ -370,6 +370,7 @@ class DeepCFRSolver(policy.Policy):
         if self._use_checkpoints and self._iteration % self._save_every == 0:
           self.save_policy_network(self._checkpoint_dir, f"iter{self._iteration}")
         self._reinitialize_policy_network()
+      self._iteration += 1
 
     # Final train policy network.
     policy_loss = self._learn_strategy_network()
