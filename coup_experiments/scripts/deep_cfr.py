@@ -26,7 +26,7 @@ from open_spiel.python.algorithms import expected_game_score
 import pyspiel
 
 from coup_experiments.algorithms.rl_response import rl_resp
-from utils import *
+from coup_experiments.utils.logging import *
 import time
 
 # Temporarily disable TF2 behavior until we update the code.

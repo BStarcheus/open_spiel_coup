@@ -23,7 +23,7 @@ from open_spiel.python.algorithms import deep_cfr_tf2
 from open_spiel.python.algorithms import expected_game_score
 import pyspiel
 
-from utils import *
+from coup_experiments.utils.logging import *
 import time
 
 FLAGS = flags.FLAGS

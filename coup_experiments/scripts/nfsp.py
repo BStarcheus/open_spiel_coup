@@ -19,20 +19,18 @@ from absl import flags
 from absl import logging
 import tensorflow.compat.v1 as tf
 
-from open_spiel.python import policy
 from open_spiel.python import rl_environment
 from open_spiel.python.algorithms import nfsp
 
 from coup_experiments.algorithms.rl_response import rl_resp
-from utils import *
+from coup_experiments.utils.logging import *
+from coup_experiments.utils.nfsp_policies import *
 import time
 
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string("game_name", "coup",
                     "Name of the game.")
-flags.DEFINE_integer("num_players", 2,
-                     "Number of players.")
 flags.DEFINE_integer("num_train_episodes", 1000000,
                      "Number of training episodes.")
 flags.DEFINE_list("hidden_layers_sizes", [128,], 
@@ -83,37 +81,6 @@ flags.DEFINE_integer("rl_resp_eval_episodes", 1000,
                      "Number of episodes per rl_resp evaluation")
 flags.DEFINE_string("log_file", "", "File to output log to")
 
-class NFSPPolicies(policy.Policy):
-  """Joint policy to be evaluated."""
-
-  def __init__(self, env, nfsp_policies, mode):
-    game = env.game
-    player_ids = list(range(FLAGS.num_players))
-    super(NFSPPolicies, self).__init__(game, player_ids)
-    self._policies = nfsp_policies
-    self._mode = mode
-    self._obs = {
-        "info_state": [None] * FLAGS.num_players,
-        "legal_actions": [None] * FLAGS.num_players
-    }
-
-  def action_probabilities(self, state, player_id=None):
-    cur_player = state.current_player()
-    legal_actions = state.legal_actions(cur_player)
-
-    self._obs["current_player"] = cur_player
-    self._obs["info_state"][cur_player] = (
-        state.information_state_tensor(cur_player))
-    self._obs["legal_actions"][cur_player] = legal_actions
-
-    info_state = rl_environment.TimeStep(
-        observations=self._obs, rewards=None, discounts=None, step_type=None)
-
-    with self._policies[cur_player].temp_mode_as(self._mode):
-      p = self._policies[cur_player].step(info_state, is_evaluation=True).probs
-    prob_dict = {action: p[action] for action in legal_actions}
-    return prob_dict
-
 
 def main(unused_argv):
   if len(FLAGS.log_file):
@@ -127,7 +94,7 @@ def main(unused_argv):
       "rl_resp_eval_every", "rl_resp_eval_episodes"])
   logging.info("Loading %s", FLAGS.game_name)
   game = FLAGS.game_name
-  num_players = FLAGS.num_players
+  num_players = 2
 
   env = rl_environment.Environment(game)
   info_state_size = env.observation_spec()["info_state"][0]

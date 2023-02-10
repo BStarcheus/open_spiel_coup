@@ -22,7 +22,7 @@ from open_spiel.python.algorithms import outcome_sampling_mccfr as outcome_mccfr
 import pyspiel
 
 from coup_experiments.algorithms.rl_response import rl_resp
-from utils import *
+from coup_experiments.utils.logging import *
 import time
 
 FLAGS = flags.FLAGS
