@@ -132,6 +132,7 @@ class DeepCFRSolver(policy.Policy):
                reinitialize_advantage_networks: bool = True,
                sampling_method='external',
                outcome_samp_expl=0.6,
+               outcome_factor=1,
                eval_func=None,
                eval_every=10,
                eval_train_episodes=10000,
@@ -165,6 +166,7 @@ class DeepCFRSolver(policy.Policy):
       outcome_samp_expl: Epsilon exploration factor for outcome sampling.
         When sampling episodes, the updating player will sample according to
         expl * uniform + (1 - expl) * current_policy.
+      outcome_factor: The number of actions to sample in outcome sampling
       eval_func: Evaluation function, rl_resp
       eval_every: Iteration frequency to evaluate the agent
       eval_train_episodes: Number of training episodes in eval
@@ -201,6 +203,7 @@ class DeepCFRSolver(policy.Policy):
       raise ValueError(f'Unknown sampling method \'{sampling_method}\'.')
     self._sampling_method = sampling_method
     self._expl = outcome_samp_expl
+    self._outcome_factor = outcome_factor
 
     # Evaluation every so many iterations
     self._eval_func = eval_func
@@ -419,14 +422,19 @@ class DeepCFRSolver(policy.Policy):
       elif self._sampling_method == 'outcome':
         legal_actions = state.legal_actions()
         num_legal_actions = len(legal_actions)
+        num_to_sample = min(num_legal_actions, self._outcome_factor)
         uniform_policy = (
           np.array(state.legal_actions_mask(player)) / num_legal_actions)
         probs = (self._expl * uniform_policy + 
                     (1.0 - self._expl) * np.array(strategy))
         probs /= probs.sum()
-        sampled_action = np.random.choice(range(self._num_actions), p=probs)
-        expected_payoff[sampled_action] = self._traverse_game_tree(
-              state.child(sampled_action), player)
+        sampled_actions = np.random.choice(range(self._num_actions),
+                                           size=num_to_sample,
+                                           replace=False,
+                                           p=probs)
+        for a in sampled_actions:
+          expected_payoff[a] = self._traverse_game_tree(
+              state.child(a), player)
      
       cfv = 0
       for a_ in state.legal_actions():
