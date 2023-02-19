@@ -374,7 +374,8 @@ class DeepCFRSolver(policy.Policy):
         # Evaluate the current agent
         policy_loss = self._learn_strategy_network()
         logging.info(f'Policy loss: {policy_loss}')
-        self._eval_func(num_train_episodes=self._eval_train_episodes,
+        self._eval_func(exploitee=self,
+                        num_train_episodes=self._eval_train_episodes,
                         eval_every=self._eval_test_every,
                         eval_episodes=self._eval_test_episodes)
 
@@ -387,7 +388,8 @@ class DeepCFRSolver(policy.Policy):
     policy_loss = self._learn_strategy_network()
     # eval and save final policy
     if self._eval_func is not None:
-      self._eval_func(num_train_episodes=self._eval_train_episodes,
+      self._eval_func(exploitee=self,
+                      num_train_episodes=self._eval_train_episodes,
                       eval_every=self._eval_test_every,
                       eval_episodes=self._eval_test_episodes)
     if self._use_checkpoints:
