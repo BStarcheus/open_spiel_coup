@@ -55,10 +55,14 @@ flags.DEFINE_integer("advantage_network_train_steps", 20,
                      "Number of advantage network training steps.")
 flags.DEFINE_bool("reinitialize_advantage_networks", False,
                   "Reinit advantage network before training each iter.")
+flags.DEFINE_string("sampling_method", "outcome",
+                    "outcome or e-outcome sampling")
 flags.DEFINE_integer("outcome_factor", 1,
                      "Number of actions to sample in outcome sampling.")
 flags.DEFINE_integer("outcome_depth", -1, # -1 = None (no depth limit)
                      "The depth of player actions to use multi-outcome sampling for.")
+flags.DEFINE_float("e_outcome", 0,
+                   "Epsilon value for epsilon-outcome sampling. When random < epsilon, use external sampling.")
 flags.DEFINE_bool("use_checkpoints", True, "Save/load neural network weights.")
 flags.DEFINE_string("checkpoint_dir", "/tmp/deep_cfr",
                     "Directory to save/load the agent.")
@@ -82,7 +86,8 @@ def main(unused_argv):
   log_flags(FLAGS, ["num_iterations", "num_traversals", "policy_network_layers",
       "advantage_network_layers", "learning_rate", "batch_size_advantage",
       "batch_size_strategy", "memory_capacity", "policy_network_train_steps",
-      "advantage_network_train_steps", "reinitialize_advantage_networks", "outcome_factor", "outcome_depth",
+      "advantage_network_train_steps", "reinitialize_advantage_networks",
+      "sampling_method", "outcome_factor", "outcome_depth", "e_outcome",
       "eval_every", "rl_resp_train_episodes", "rl_resp_eval_every", "rl_resp_eval_episodes"])
   logging.info("Loading %s", FLAGS.game_name)
   game = pyspiel.load_game(FLAGS.game_name)
@@ -103,7 +108,7 @@ def main(unused_argv):
         policy_network_train_steps=FLAGS.policy_network_train_steps,
         advantage_network_train_steps=FLAGS.advantage_network_train_steps,
         reinitialize_advantage_networks=FLAGS.reinitialize_advantage_networks,
-        sampling_method="outcome",
+        sampling_method=FLAGS.sampling_method,
         outcome_factor=FLAGS.outcome_factor,
         outcome_depth=FLAGS.outcome_depth,
         eval_func=rl_resp,

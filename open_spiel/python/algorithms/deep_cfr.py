@@ -134,6 +134,7 @@ class DeepCFRSolver(policy.Policy):
                outcome_samp_expl=0.6,
                outcome_factor=1,
                outcome_depth=None,
+               e_outcome=0,
                eval_func=None,
                eval_every=10,
                eval_train_episodes=10000,
@@ -170,6 +171,8 @@ class DeepCFRSolver(policy.Policy):
       outcome_factor: The number of actions to sample in outcome sampling
       outcome_depth: The depth of player actions to use multi-outcome sampling for.
         After depth, use single outcome sampling.
+      e_outcome: Epsilon value for epsilon-outcome sampling.
+        When random < epsilon, use external sampling.
       eval_func: Evaluation function, rl_resp
       eval_every: Iteration frequency to evaluate the agent
       eval_train_episodes: Number of training episodes in eval
@@ -202,12 +205,13 @@ class DeepCFRSolver(policy.Policy):
     self._iteration = 1
     self._environment_steps = 0
 
-    if sampling_method not in ['external', 'outcome']:
+    if sampling_method not in ['external', 'outcome', 'e-outcome']:
       raise ValueError(f'Unknown sampling method \'{sampling_method}\'.')
     self._sampling_method = sampling_method
     self._expl = outcome_samp_expl
     self._outcome_factor = outcome_factor
     self._outcome_depth = outcome_depth
+    self._e_outcome = e_outcome
 
     # Evaluation every so many iterations
     self._eval_func = eval_func
@@ -424,11 +428,18 @@ class DeepCFRSolver(policy.Policy):
       # Update the policy over the info set & actions via regret matching.
       _, strategy = self._sample_action_from_advantage(state, player)
       
-      if self._sampling_method == 'external':
+      sample_method = self._sampling_method
+      if sample_method == 'e-outcome':
+        if np.random.random() < self._e_outcome:
+          sample_method = 'external'
+        else:
+          sample_method = 'outcome'
+
+      if sample_method == 'external':
         for action in state.legal_actions():
           expected_payoff[action] = self._traverse_game_tree(
               state.child(action), player)
-      elif self._sampling_method == 'outcome':
+      elif sample_method == 'outcome':
         legal_actions = state.legal_actions()
         num_legal_actions = len(legal_actions)
         num_to_sample = min(num_legal_actions, self._outcome_factor)
