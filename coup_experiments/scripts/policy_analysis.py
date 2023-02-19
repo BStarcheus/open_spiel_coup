@@ -12,6 +12,7 @@ import pyspiel
 import numpy as np
 
 from coup_experiments.utils.get_bots import *
+from coup_experiments.utils.logging import *
 
 # Temporarily disable TF2 behavior until we update the code.
 tf.disable_v2_behavior()
@@ -78,6 +79,8 @@ flags.DEFINE_float("epsilon_start", 0.06,
                    "Starting exploration parameter.")
 flags.DEFINE_float("epsilon_end", 0.001,
                    "Final exploration parameter.")
+
+flags.DEFINE_string("log_file", "", "File to output log to")
 
 def log_action_probs(bot, state, indent=0):
   probs, _ = bot.step_with_policy(state)
@@ -354,6 +357,9 @@ def policy_tests(game, bots):
   random_seq_test(game, bots)
 
 def main(_):
+  if len(FLAGS.log_file):
+    log_to_file(FLAGS.log_file)
+  log_flags(FLAGS, ["saved_dir", "checkpoint_id"])
   game = pyspiel.load_game(FLAGS.game)
   with tf.Session() as sess:
     if FLAGS.algo == "deep_cfr":

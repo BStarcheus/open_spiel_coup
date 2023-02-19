@@ -1,15 +1,13 @@
-"""Test a list of saved agents for two algorithms against each other"""
+"""Load a saved policy agent and run rl_response"""
 
 from absl import app
 from absl import flags
 from absl import logging
-
 import tensorflow.compat.v1 as tf
-
 import pyspiel
-import numpy as np
+from coup_experiments.utils.restore_policy import *
+from coup_experiments.algorithms.rl_response import rl_resp
 from coup_experiments.utils.logging import *
-from coup_experiments.utils.get_bots import *
 
 # Temporarily disable TF2 behavior until we update the code.
 tf.disable_v2_behavior()
@@ -17,16 +15,9 @@ tf.disable_v2_behavior()
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string("game", "coup", "Game name")
-flags.DEFINE_string("algo1", "deep_cfr", "Algorithm  of the first list of saved models. deep_cfr or nfsp")
-flags.DEFINE_string("algo2", "nfsp", "Algorithm of the second list of saved models. deep_cfr or nfsp")
-flags.DEFINE_string("saved_dir1", "/agents/deep_cfr/", "Directory with saved model")
-flags.DEFINE_string("saved_dir2", "/agents/nfsp/", "Directory with saved model")
-flags.DEFINE_list("algo1_checkpoint_ids", [f"iter{10 * (i+1)}" for i in range(5)],
-                  "List of ID's of the checkpoint. deep_cfr: iter{iter-num}, nfsp: ep{ep-num}")
-flags.DEFINE_list("algo2_checkpoint_ids", [f"ep{1000000 * (i+1)}" for i in range(5)],
-                  "List of ID's of the checkpoint. deep_cfr: iter{iter-num}, nfsp: ep{ep-num}")
-flags.DEFINE_integer("cmp_test_eps", 1000, "Number of episodes to test per agent matchup")
-flags.DEFINE_string("log_file", "", "File to output log to")
+flags.DEFINE_string("algo", "deep_cfr", "Algorithm which has a saved model in the given directory. deep_cfr or nfsp")
+flags.DEFINE_string("saved_dir", "/agents/deep_cfr/", "Directory with saved model")
+flags.DEFINE_string("checkpoint_id", "iter10", "The ID of the checkpoint. deep_cfr: iter{iter-num}, nfsp: ep{ep-num}")
 
 # Deep CFR
 flags.DEFINE_integer("num_iterations", 100, "Number of iterations")
@@ -84,65 +75,32 @@ flags.DEFINE_float("epsilon_start", 0.06,
 flags.DEFINE_float("epsilon_end", 0.001,
                    "Final exploration parameter.")
 
+flags.DEFINE_integer("rl_resp_train_episodes", 10000,
+                     "Number of training episodes for rl_resp model")
+flags.DEFINE_integer("rl_resp_eval_every", 1000,
+                     "How often to evaluate trained rl_resp model")
+flags.DEFINE_integer("rl_resp_eval_episodes", 1000,
+                     "Number of episodes per rl_resp evaluation")
+flags.DEFINE_string("log_file", "", "File to output log to")
+
 def main(_):
   if len(FLAGS.log_file):
     log_to_file(FLAGS.log_file)
-  log_flags(FLAGS, ["cmp_test_eps", "saved_dir1", "algo1_checkpoint_ids",
-                    "saved_dir2", "algo2_checkpoint_ids"])
-
+  log_flags(FLAGS, ["saved_dir", "checkpoint_id"])
   game = pyspiel.load_game(FLAGS.game)
-  algo1_checkpoint_ids = FLAGS.algo1_checkpoint_ids
-  algo2_checkpoint_ids = FLAGS.algo2_checkpoint_ids
-
   with tf.Session() as sess:
-    players = [None]*2
-
-    for a1_c_id in algo1_checkpoint_ids:
-      if FLAGS.algo1 == "deep_cfr":
-        players[0] = get_deep_cfr_bot(0, sess, game, tf, FLAGS, FLAGS.saved_dir1, a1_c_id)
-      elif FLAGS.algo1 == "nfsp":
-        players[0] = get_nfsp_bot(0, sess, FLAGS, FLAGS.saved_dir1, a1_c_id)
-      else:
-        logging.info(f"Algorithm {FLAGS.algo1} not recognized")
-        return
-
-      for a2_c_id in algo2_checkpoint_ids:
-        if FLAGS.algo2 == "deep_cfr":
-          players[1] = get_deep_cfr_bot(1, sess, game, tf, FLAGS, FLAGS.saved_dir2, a2_c_id)
-        elif FLAGS.algo2 == "nfsp":
-          players[1] = get_nfsp_bot(1, sess, FLAGS, FLAGS.saved_dir2, a2_c_id)
-        else:
-          logging.info(f"Algorithm {FLAGS.algo2} not recognized")
-          return
-
-        logging.info(f"{FLAGS.saved_dir1} {a1_c_id}  vs.  {FLAGS.saved_dir2} {a2_c_id}")
-
-        # Test agents against each other
-        p0_total_reward = 0
-        total_ep_steps = 0
-        for _ in range(FLAGS.cmp_test_eps):
-
-          state = game.new_initial_state()
-          while not state.is_terminal():
-            total_ep_steps += 1
-            if state.is_chance_node():
-              # Sample chance
-              outcomes_with_probs = state.chance_outcomes()
-              action_list, prob_list = zip(*outcomes_with_probs)
-              action = np.random.choice(action_list, p=prob_list)
-              state.apply_action(action)
-            else:
-              pid = state.current_player()
-              p = players[pid]
-              action = p.step(state)
-              state.apply_action(action)
-
-          p0_total_reward += state.returns()[0]
-
-        p0_mean_reward = p0_total_reward / FLAGS.cmp_test_eps
-        # p1 mean reward is * -1 (zero sum game)
-        logging.info(f"  Mean rewards: [{p0_mean_reward}, {-1*p0_mean_reward}]")
-        logging.info(f"  Mean ep length: {total_ep_steps / FLAGS.cmp_test_eps}")
+    if FLAGS.algo == "deep_cfr":
+      pol = restore_deep_cfr(sess, game, tf, FLAGS, FLAGS.saved_dir, FLAGS.checkpoint_id)
+    elif FLAGS.algo == "nfsp":
+      pol = restore_nfsp(sess, FLAGS, FLAGS.saved_dir, FLAGS.checkpoint_id)
+    else:
+      logging.info(f"Algorithm {FLAGS.algo} not recognized")
+      return
+    
+    rl_resp(exploitee=pol,
+            num_train_episodes=FLAGS.rl_resp_train_episodes,
+            eval_every=FLAGS.rl_resp_eval_every,
+            eval_episodes=FLAGS.rl_resp_eval_episodes)
 
 
 if __name__ == "__main__":
