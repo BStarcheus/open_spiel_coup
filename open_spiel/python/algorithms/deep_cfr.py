@@ -165,13 +165,16 @@ class DeepCFRSolver(policy.Policy):
         (per iteration).
       reinitialize_advantage_networks: Whether to re-initialize the
         advantage network before training on each iteration.
-      sampling_method: Traversal sampling method, external, outcome, e-outcome
-      outcome_samp_expl: Epsilon exploration factor for outcome sampling.
+      sampling_method: Traversal sampling method: external, outcome, e-outcome
+      outcome_samp_expl: Exploration factor for outcome sampling.
         When sampling episodes, the updating player will sample according to
         expl * uniform + (1 - expl) * current_policy.
-      outcome_factor: The number of actions to sample in outcome sampling
+      outcome_factor: The number of actions to sample in outcome sampling.
+        If > 1, multi-outcome sampling.
+        If e_outcome > 0, epsilon outcome sampling. Factor determines number of actions
+        sampled epsilon proportion of time.
       e_outcome: Epsilon value for epsilon-outcome sampling.
-        When random < epsilon, use external sampling.
+        When random < epsilon, use multi-outcome (depends on outcome_factor).
       iter_net_train: Whether to train the policy network iteratively
         instead of all at the end.
       adv_net_reinit_every: How often to reinitialize the advantage networks
@@ -211,6 +214,8 @@ class DeepCFRSolver(policy.Policy):
       raise ValueError(f'Unknown sampling method \'{sampling_method}\'.')
     self._sampling_method = sampling_method
     self._expl = outcome_samp_expl
+    if outcome_factor <= 0:
+      raise ValueError(f'Outcome factor must be greater than 0.')
     self._outcome_factor = outcome_factor
     self._e_outcome = e_outcome
     self._iter_net_train = iter_net_train
@@ -432,22 +437,23 @@ class DeepCFRSolver(policy.Policy):
       sampled_regret = collections.defaultdict(float)
       # Update the policy over the info set & actions via regret matching.
       _, strategy = self._sample_action_from_advantage(state, player)
-      
-      sample_method = self._sampling_method
-      if sample_method == 'e-outcome':
-        if np.random.random() < self._e_outcome:
-          sample_method = 'external'
-        else:
-          sample_method = 'outcome'
 
-      if sample_method == 'external':
+      if self._sampling_method == 'external':
         for action in state.legal_actions():
           expected_payoff[action] = self._traverse_game_tree(
               state.child(action), player)
-      elif sample_method == 'outcome':
+      elif self._sampling_method == 'outcome':
         legal_actions = state.legal_actions()
         num_legal_actions = len(legal_actions)
-        num_to_sample = min(num_legal_actions, self._outcome_factor)
+
+        if np.random.random() < self._e_outcome:
+          # e, multi-outcome sample
+          o_factor = self._outcome_factor
+        else:
+          # 1 - e, single outcome sample
+          o_factor = 1
+
+        num_to_sample = min(num_legal_actions, o_factor)
         uniform_policy = (
           np.array(state.legal_actions_mask(player)) / num_legal_actions)
         probs = (self._expl * uniform_policy + 
