@@ -135,6 +135,7 @@ class DeepCFRSolver(policy.Policy):
                outcome_factor=1,
                outcome_depth=None,
                e_outcome=0,
+               iterative_policy_net_train=False,
                eval_func=None,
                eval_every=10,
                eval_train_episodes=10000,
@@ -173,6 +174,8 @@ class DeepCFRSolver(policy.Policy):
         After depth, use single outcome sampling.
       e_outcome: Epsilon value for epsilon-outcome sampling.
         When random < epsilon, use external sampling.
+      iterative_policy_net_train: Whether to train the policy network iteratively
+        instead of all at the end.
       eval_func: Evaluation function, rl_resp
       eval_every: Iteration frequency to evaluate the agent
       eval_train_episodes: Number of training episodes in eval
@@ -212,6 +215,7 @@ class DeepCFRSolver(policy.Policy):
     self._outcome_factor = outcome_factor
     self._outcome_depth = outcome_depth
     self._e_outcome = e_outcome
+    self._iterative_pol_train = iterative_policy_net_train
 
     # Evaluation every so many iterations
     self._eval_func = eval_func
@@ -368,11 +372,14 @@ class DeepCFRSolver(policy.Policy):
           self.reinitialize_advantage_network(p)
         advantage_losses[p].append(self._learn_advantage_network(p))
 
+      if self._iterative_pol_train:
+        policy_loss = self._learn_strategy_network_iter()
+
       if (self._eval_func is not None and
           self._iteration % self._eval_every == 0 and
           self._iteration != self._num_iterations):
-        # Evaluate the current agent
-        policy_loss = self._learn_strategy_network()
+        if not self._iterative_pol_train:
+          policy_loss = self._learn_strategy_network()
         logging.info(f'Policy loss: {policy_loss}')
         self._eval_func(exploitee=self,
                         num_train_episodes=self._eval_train_episodes,
@@ -381,11 +388,15 @@ class DeepCFRSolver(policy.Policy):
 
         if self._use_checkpoints and self._iteration % self._save_every == 0:
           self.save_policy_network(self._checkpoint_dir, f"iter{self._iteration}")
-        self._reinitialize_policy_network()
+        if not self._iterative_pol_train:
+          self._reinitialize_policy_network()
       self._iteration += 1
 
-    # Final train policy network.
-    policy_loss = self._learn_strategy_network()
+    if self._iterative_pol_train:
+      policy_loss = self._learn_strategy_network_iter()
+    else:
+      # Final train policy network.
+      policy_loss = self._learn_strategy_network()
     # eval and save final policy
     if self._eval_func is not None:
       self._eval_func(exploitee=self,
@@ -580,26 +591,30 @@ class DeepCFRSolver(policy.Policy):
       The average loss obtained on this batch of transitions or `None`.
     """
     for _ in range(self._policy_network_train_steps):
-      if self._batch_size_strategy:
-        if self._batch_size_strategy > len(self._strategy_memories):
-          ## Skip if there aren't enough samples
-          return None
-        samples = self._strategy_memories.sample(self._batch_size_strategy)
-      else:
-        samples = self._strategy_memories
-      info_states = []
-      action_probs = []
-      iterations = []
-      for s in samples:
-        info_states.append(s.info_state)
-        action_probs.append(s.strategy_action_probs)
-        iterations.append([s.iteration])
+      loss_strategy = self._learn_strategy_network_iter()
+    return loss_strategy
 
-      loss_strategy, _ = self._session.run(
-          [self._loss_policy, self._learn_step_policy],
-          feed_dict={
-              self._info_state_ph: np.array(info_states),
-              self._action_probs_ph: np.array(np.squeeze(action_probs)),
-              self._iter_ph: np.array(iterations),
-          })
+  def _learn_strategy_network_iter(self):
+    if self._batch_size_strategy:
+      if self._batch_size_strategy > len(self._strategy_memories):
+        ## Skip if there aren't enough samples
+        return None
+      samples = self._strategy_memories.sample(self._batch_size_strategy)
+    else:
+      samples = self._strategy_memories
+    info_states = []
+    action_probs = []
+    iterations = []
+    for s in samples:
+      info_states.append(s.info_state)
+      action_probs.append(s.strategy_action_probs)
+      iterations.append([s.iteration])
+
+    loss_strategy, _ = self._session.run(
+        [self._loss_policy, self._learn_step_policy],
+        feed_dict={
+            self._info_state_ph: np.array(info_states),
+            self._action_probs_ph: np.array(np.squeeze(action_probs)),
+            self._iter_ph: np.array(iterations),
+        })
     return loss_strategy
