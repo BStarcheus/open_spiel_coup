@@ -134,7 +134,8 @@ class DeepCFRSolver(policy.Policy):
                outcome_samp_expl=0.6,
                outcome_factor=1,
                e_outcome=0,
-               iterative_policy_net_train=False,
+               iter_net_train=False,
+               adv_net_reinit_every=1,
                eval_func=None,
                eval_every=10,
                eval_train_episodes=10000,
@@ -164,15 +165,16 @@ class DeepCFRSolver(policy.Policy):
         (per iteration).
       reinitialize_advantage_networks: Whether to re-initialize the
         advantage network before training on each iteration.
-      sampling_method: Traversal sampling method, external or outcome
+      sampling_method: Traversal sampling method, external, outcome, e-outcome
       outcome_samp_expl: Epsilon exploration factor for outcome sampling.
         When sampling episodes, the updating player will sample according to
         expl * uniform + (1 - expl) * current_policy.
       outcome_factor: The number of actions to sample in outcome sampling
       e_outcome: Epsilon value for epsilon-outcome sampling.
         When random < epsilon, use external sampling.
-      iterative_policy_net_train: Whether to train the policy network iteratively
+      iter_net_train: Whether to train the policy network iteratively
         instead of all at the end.
+      adv_net_reinit_every: How often to reinitialize the advantage networks
       eval_func: Evaluation function, rl_resp
       eval_every: Iteration frequency to evaluate the agent
       eval_train_episodes: Number of training episodes in eval
@@ -211,7 +213,8 @@ class DeepCFRSolver(policy.Policy):
     self._expl = outcome_samp_expl
     self._outcome_factor = outcome_factor
     self._e_outcome = e_outcome
-    self._iterative_pol_train = iterative_policy_net_train
+    self._iter_net_train = iter_net_train
+    self._adv_net_reinit_every = adv_net_reinit_every
 
     # Evaluation every so many iterations
     self._eval_func = eval_func
@@ -363,18 +366,19 @@ class DeepCFRSolver(policy.Policy):
       for p in range(self._num_players):
         for _ in range(self._num_traversals):
           self._traverse_game_tree(self._root_node, p)
-        if self._reinitialize_advantage_networks:
+        if (self._reinitialize_advantage_networks and
+            self._iteration % self._adv_net_reinit_every == 0):
           # Re-initialize advantage network for player and train from scratch.
           self.reinitialize_advantage_network(p)
         advantage_losses[p].append(self._learn_advantage_network(p))
 
-      if self._iterative_pol_train:
-        policy_loss = self._learn_strategy_network_iter()
+      if self._iter_net_train:
+        policy_loss = self._learn_strategy_network()
 
       if (self._eval_func is not None and
           self._iteration % self._eval_every == 0 and
           self._iteration != self._num_iterations):
-        if not self._iterative_pol_train:
+        if not self._iter_net_train:
           policy_loss = self._learn_strategy_network()
         logging.info(f'Policy loss: {policy_loss}')
         self._eval_func(exploitee=self,
@@ -384,15 +388,12 @@ class DeepCFRSolver(policy.Policy):
 
         if self._use_checkpoints and self._iteration % self._save_every == 0:
           self.save_policy_network(self._checkpoint_dir, f"iter{self._iteration}")
-        if not self._iterative_pol_train:
+        if not self._iter_net_train:
           self._reinitialize_policy_network()
       self._iteration += 1
 
-    if self._iterative_pol_train:
-      policy_loss = self._learn_strategy_network_iter()
-    else:
-      # Final train policy network.
-      policy_loss = self._learn_strategy_network()
+    # Final train policy network.
+    policy_loss = self._learn_strategy_network()
     # eval and save final policy
     if self._eval_func is not None:
       self._eval_func(exploitee=self,
@@ -576,30 +577,26 @@ class DeepCFRSolver(policy.Policy):
       The average loss obtained on this batch of transitions or `None`.
     """
     for _ in range(self._policy_network_train_steps):
-      loss_strategy = self._learn_strategy_network_iter()
-    return loss_strategy
+      if self._batch_size_strategy:
+        if self._batch_size_strategy > len(self._strategy_memories):
+          ## Skip if there aren't enough samples
+          return None
+        samples = self._strategy_memories.sample(self._batch_size_strategy)
+      else:
+        samples = self._strategy_memories
+      info_states = []
+      action_probs = []
+      iterations = []
+      for s in samples:
+        info_states.append(s.info_state)
+        action_probs.append(s.strategy_action_probs)
+        iterations.append([s.iteration])
 
-  def _learn_strategy_network_iter(self):
-    if self._batch_size_strategy:
-      if self._batch_size_strategy > len(self._strategy_memories):
-        ## Skip if there aren't enough samples
-        return None
-      samples = self._strategy_memories.sample(self._batch_size_strategy)
-    else:
-      samples = self._strategy_memories
-    info_states = []
-    action_probs = []
-    iterations = []
-    for s in samples:
-      info_states.append(s.info_state)
-      action_probs.append(s.strategy_action_probs)
-      iterations.append([s.iteration])
-
-    loss_strategy, _ = self._session.run(
-        [self._loss_policy, self._learn_step_policy],
-        feed_dict={
-            self._info_state_ph: np.array(info_states),
-            self._action_probs_ph: np.array(np.squeeze(action_probs)),
-            self._iter_ph: np.array(iterations),
-        })
+      loss_strategy, _ = self._session.run(
+          [self._loss_policy, self._learn_step_policy],
+          feed_dict={
+              self._info_state_ph: np.array(info_states),
+              self._action_probs_ph: np.array(np.squeeze(action_probs)),
+              self._iter_ph: np.array(iterations),
+          })
     return loss_strategy
