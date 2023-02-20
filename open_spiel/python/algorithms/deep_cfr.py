@@ -133,7 +133,6 @@ class DeepCFRSolver(policy.Policy):
                sampling_method='external',
                outcome_samp_expl=0.6,
                outcome_factor=1,
-               outcome_depth=None,
                e_outcome=0,
                iterative_policy_net_train=False,
                eval_func=None,
@@ -170,8 +169,6 @@ class DeepCFRSolver(policy.Policy):
         When sampling episodes, the updating player will sample according to
         expl * uniform + (1 - expl) * current_policy.
       outcome_factor: The number of actions to sample in outcome sampling
-      outcome_depth: The depth of player actions to use multi-outcome sampling for.
-        After depth, use single outcome sampling.
       e_outcome: Epsilon value for epsilon-outcome sampling.
         When random < epsilon, use external sampling.
       iterative_policy_net_train: Whether to train the policy network iteratively
@@ -213,7 +210,6 @@ class DeepCFRSolver(policy.Policy):
     self._sampling_method = sampling_method
     self._expl = outcome_samp_expl
     self._outcome_factor = outcome_factor
-    self._outcome_depth = outcome_depth
     self._e_outcome = e_outcome
     self._iterative_pol_train = iterative_policy_net_train
 
@@ -366,7 +362,7 @@ class DeepCFRSolver(policy.Policy):
     for _ in range(self._num_iterations):
       for p in range(self._num_players):
         for _ in range(self._num_traversals):
-          self._traverse_game_tree(self._root_node, p, depth=self._outcome_depth)
+          self._traverse_game_tree(self._root_node, p)
         if self._reinitialize_advantage_networks:
           # Re-initialize advantage network for player and train from scratch.
           self.reinitialize_advantage_network(p)
@@ -410,7 +406,7 @@ class DeepCFRSolver(policy.Policy):
   def get_environment_steps(self):
     return self._environment_steps
 
-  def _traverse_game_tree(self, state, player, depth=None):
+  def _traverse_game_tree(self, state, player):
     """Performs a traversal of the game tree.
 
     Over a traversal the advantage and strategy memories are populated with
@@ -418,11 +414,6 @@ class DeepCFRSolver(policy.Policy):
     Args:
       state: Current OpenSpiel game state.
       player: (int) Player index for this traversal.
-      depth: The depth of player actions to use multi-outcome sampling for.
-             After depth, use single outcome sampling.
-             Example: If outcome_factor=2, depth=3, then each call to
-             _traverse_game_tree from solve() will be informed by
-             2^3 = 8 game trajectories.
     Returns:
       Recursively returns expected payoffs for each action.
     """
@@ -435,7 +426,7 @@ class DeepCFRSolver(policy.Policy):
       # If this is a chance node, sample an action
       chance_outcome, chance_proba = zip(*state.chance_outcomes())
       action = np.random.choice(chance_outcome, p=chance_proba)
-      return self._traverse_game_tree(state.child(action), player, depth=depth)
+      return self._traverse_game_tree(state.child(action), player)
     elif state.current_player() == player:
       sampled_regret = collections.defaultdict(float)
       # Update the policy over the info set & actions via regret matching.
@@ -465,15 +456,9 @@ class DeepCFRSolver(policy.Policy):
                                            size=num_to_sample,
                                            replace=False,
                                            p=probs)
-        if depth == 0:
-          # Sample 1 action
-          a = sampled_actions[0]
+        for a in sampled_actions:
           expected_payoff[a] = self._traverse_game_tree(
-                state.child(a), player, depth=depth)
-        else:
-          for a in sampled_actions:
-            expected_payoff[a] = self._traverse_game_tree(
-                state.child(a), player, depth=depth-1)
+              state.child(a), player)
      
       cfv = 0
       for a_ in state.legal_actions():
@@ -499,7 +484,7 @@ class DeepCFRSolver(policy.Policy):
           StrategyMemory(
               state.information_state_tensor(other_player), self._iteration,
               strategy))
-      return self._traverse_game_tree(state.child(sampled_action), player, depth=depth)
+      return self._traverse_game_tree(state.child(sampled_action), player)
 
   def _sample_action_from_advantage(self, state, player):
     """Returns an info state policy by applying regret-matching.

@@ -59,8 +59,6 @@ flags.DEFINE_string("sampling_method", "outcome",
                     "outcome or e-outcome sampling")
 flags.DEFINE_integer("outcome_factor", 1,
                      "Number of actions to sample in outcome sampling.")
-flags.DEFINE_integer("outcome_depth", -1, # -1 = None (no depth limit)
-                     "The depth of player actions to use multi-outcome sampling for.")
 flags.DEFINE_float("e_outcome", 0,
                    "Epsilon value for epsilon-outcome sampling. When random < epsilon, use external sampling.")
 flags.DEFINE_bool("iter_pol_train", False, "Train policy network iteratively instead of all at the end.")
@@ -88,7 +86,7 @@ def main(unused_argv):
       "advantage_network_layers", "learning_rate", "batch_size_advantage",
       "batch_size_strategy", "memory_capacity", "policy_network_train_steps",
       "advantage_network_train_steps", "reinitialize_advantage_networks",
-      "sampling_method", "outcome_factor", "outcome_depth", "e_outcome", "iter_pol_train",
+      "sampling_method", "outcome_factor", "e_outcome", "iter_pol_train",
       "eval_every", "rl_resp_train_episodes", "rl_resp_eval_every", "rl_resp_eval_episodes"])
   logging.info("Loading %s", FLAGS.game_name)
   game = pyspiel.load_game(FLAGS.game_name)
@@ -111,7 +109,6 @@ def main(unused_argv):
         reinitialize_advantage_networks=FLAGS.reinitialize_advantage_networks,
         sampling_method=FLAGS.sampling_method,
         outcome_factor=FLAGS.outcome_factor,
-        outcome_depth=FLAGS.outcome_depth,
         e_outcome=FLAGS.e_outcome,
         iterative_policy_net_train=FLAGS.iter_pol_train,
         eval_func=rl_resp,
