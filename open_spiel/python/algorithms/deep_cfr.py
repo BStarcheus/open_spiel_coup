@@ -442,16 +442,19 @@ class DeepCFRSolver(policy.Policy):
         for action in state.legal_actions():
           expected_payoff[action] = self._traverse_game_tree(
               state.child(action), player)
-      elif self._sampling_method == 'outcome':
+      else: # outcome, e-outcome
         legal_actions = state.legal_actions()
         num_legal_actions = len(legal_actions)
 
-        if np.random.random() < self._e_outcome:
-          # e, multi-outcome sample
+        if self._sampling_method == 'e-outcome':
+          if np.random.random() < self._e_outcome:
+            # e, multi-outcome sample
+            o_factor = self._outcome_factor
+          else:
+            # 1 - e, single outcome sample
+            o_factor = 1
+        else: # outcome
           o_factor = self._outcome_factor
-        else:
-          # 1 - e, single outcome sample
-          o_factor = 1
 
         num_to_sample = min(num_legal_actions, o_factor)
         uniform_policy = (
