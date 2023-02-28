@@ -19,8 +19,8 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string("game", "coup", "Game name")
 flags.DEFINE_string("algo1", "deep_cfr", "Algorithm  of the first list of saved models. deep_cfr or nfsp")
 flags.DEFINE_string("algo2", "nfsp", "Algorithm of the second list of saved models. deep_cfr or nfsp")
-flags.DEFINE_string("saved_dir1", "/agents/deep_cfr/", "Directory with saved model")
-flags.DEFINE_string("saved_dir2", "/agents/nfsp/", "Directory with saved model")
+flags.DEFINE_string("saved_dir1", "/agents/deep_cfr", "Directory with saved model")
+flags.DEFINE_string("saved_dir2", "/agents/nfsp", "Directory with saved model")
 flags.DEFINE_list("algo1_checkpoint_ids", [f"iter{10 * (i+1)}" for i in range(5)],
                   "List of ID's of the checkpoint. deep_cfr: iter{iter-num}, nfsp: ep{ep-num}")
 flags.DEFINE_list("algo2_checkpoint_ids", [f"ep{1000000 * (i+1)}" for i in range(5)],
@@ -98,22 +98,24 @@ def main(_):
     players = [None]*2
 
     for a1_c_id in algo1_checkpoint_ids:
-      if FLAGS.algo1 == "deep_cfr":
-        players[0] = get_deep_cfr_bot(0, sess, game, tf, FLAGS, FLAGS.saved_dir1, a1_c_id)
-      elif FLAGS.algo1 == "nfsp":
-        players[0] = get_nfsp_bot(0, sess, FLAGS, FLAGS.saved_dir1, a1_c_id)
-      else:
-        logging.info(f"Algorithm {FLAGS.algo1} not recognized")
-        return
+      with tf.variable_scope(f"{FLAGS.algo1}{FLAGS.saved_dir1[-1]}"):# assuming number is final char
+        if FLAGS.algo1 == "deep_cfr":
+          players[0] = get_deep_cfr_bot(0, sess, game, tf, FLAGS, FLAGS.saved_dir1, a1_c_id)
+        elif FLAGS.algo1 == "nfsp":
+          players[0] = get_nfsp_bot(0, sess, FLAGS, FLAGS.saved_dir1, a1_c_id)
+        else:
+          logging.info(f"Algorithm {FLAGS.algo1} not recognized")
+          return
 
       for a2_c_id in algo2_checkpoint_ids:
-        if FLAGS.algo2 == "deep_cfr":
-          players[1] = get_deep_cfr_bot(1, sess, game, tf, FLAGS, FLAGS.saved_dir2, a2_c_id)
-        elif FLAGS.algo2 == "nfsp":
-          players[1] = get_nfsp_bot(1, sess, FLAGS, FLAGS.saved_dir2, a2_c_id)
-        else:
-          logging.info(f"Algorithm {FLAGS.algo2} not recognized")
-          return
+        with tf.variable_scope(f"{FLAGS.algo2}{FLAGS.saved_dir2[-1]}"):
+          if FLAGS.algo2 == "deep_cfr":
+            players[1] = get_deep_cfr_bot(1, sess, game, tf, FLAGS, FLAGS.saved_dir2, a2_c_id)
+          elif FLAGS.algo2 == "nfsp":
+            players[1] = get_nfsp_bot(1, sess, FLAGS, FLAGS.saved_dir2, a2_c_id)
+          else:
+            logging.info(f"Algorithm {FLAGS.algo2} not recognized")
+            return
 
         logging.info(f"{FLAGS.saved_dir1} {a1_c_id}  vs.  {FLAGS.saved_dir2} {a2_c_id}")
 
