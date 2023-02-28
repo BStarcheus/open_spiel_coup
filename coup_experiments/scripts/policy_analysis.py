@@ -87,7 +87,7 @@ def log_action_probs(bot, state, indent=0):
   sp = " " * indent
   logging.info(sp + f"{probs}")
 
-def foreign_aid_test(game, bots):
+def foreign_aid_test(game, bot):
   '''
   Test FA prob before and after being blocked by Duke.
   Should see a decrease in prob.
@@ -95,7 +95,6 @@ def foreign_aid_test(game, bots):
   logging.info("Foreign aid test")
   for p in range(2):
     logging.info(f"  P{p+1} version")
-    bot = bots[p]
     state = game.new_initial_state()
     if p == 0:
       state.apply_action(1) # Ambassador
@@ -117,7 +116,7 @@ def foreign_aid_test(game, bots):
     log_action_probs(bot, state, indent=2)
   logging.info("_____________________________________________")
 
-def coup_test(game, bots):
+def coup_test(game, bot):
   '''
   Test Coup prob for 7-9 coins.
   '''
@@ -130,25 +129,25 @@ def coup_test(game, bots):
   for _ in range(11):
     state.apply_action(0) # Income
   logging.info("  P2: 7 coins")
-  log_action_probs(bots[1], state, indent=2)
+  log_action_probs(bot, state, indent=2)
   state.apply_action(0) # Income
   logging.info("  P1: 7 coins")
-  log_action_probs(bots[0], state, indent=2)
+  log_action_probs(bot, state, indent=2)
   state.apply_action(0) # Income
   logging.info("  P2: 8 coins")
-  log_action_probs(bots[1], state, indent=2)
+  log_action_probs(bot, state, indent=2)
   state.apply_action(0) # Income
   logging.info("  P1: 8 coins")
-  log_action_probs(bots[0], state, indent=2)
+  log_action_probs(bot, state, indent=2)
   state.apply_action(0) # Income
   logging.info("  P2: 9 coins")
-  log_action_probs(bots[1], state, indent=2)
+  log_action_probs(bot, state, indent=2)
   state.apply_action(0) # Income
   logging.info("  P1: 9 coins")
-  log_action_probs(bots[0], state, indent=2)
+  log_action_probs(bot, state, indent=2)
   logging.info("_____________________________________________")
 
-def exchange_test(game, bots):
+def exchange_test(game, bot):
   '''
   Player sees Duke cards during exchange.
   Next turn, opp tries to tax.
@@ -157,7 +156,6 @@ def exchange_test(game, bots):
   logging.info("Exchange test")
   for p in range(2):
     logging.info(f"  P{p+1} version")
-    bot = bots[p]
     state = game.new_initial_state()
     state.apply_action(1) # Ambassador
     state.apply_action(1) # Ambassador
@@ -188,14 +186,13 @@ def exchange_test(game, bots):
     log_action_probs(bot, state, indent=2)
   logging.info("_____________________________________________")
 
-def assassinate_test(game, bots):
+def assassinate_test(game, bot):
   '''
   See prob of assassinate with/without card in hand.
   '''
   logging.info("Assassinate test")
   for p in range(2):
     logging.info(f"  P{p+1} version")
-    bot = bots[p]
 
     logging.info("  With assassin in hand")
     state = game.new_initial_state()
@@ -219,7 +216,7 @@ def assassinate_test(game, bots):
     log_action_probs(bot, state, indent=2)
   logging.info("_____________________________________________")
 
-def counter_assassinate_test(game, bots):
+def counter_assassinate_test(game, bot):
   '''
   See prob of block or challenge an asassination.
   With 2 cards remaining, should not risk double elimination.
@@ -228,7 +225,6 @@ def counter_assassinate_test(game, bots):
   logging.info("Counter Assassinate test")
   for p in range(2):
     logging.info(f"  P{p+1} version")
-    bot = bots[p]
     state = game.new_initial_state()
     state.apply_action(0) # Assassin
     state.apply_action(0) # Assassin
@@ -248,7 +244,7 @@ def counter_assassinate_test(game, bots):
     log_action_probs(bot, state, indent=2)
   logging.info("_____________________________________________")
 
-def steal_test(game, bots):
+def steal_test(game, bot):
   '''
   Test Steal prob before and after being blocked.
   Should see a decrease in prob.
@@ -256,7 +252,6 @@ def steal_test(game, bots):
   logging.info("Steal test")
   for p in range(2):
     logging.info(f"  P{p+1} version")
-    bot = bots[p]
     state = game.new_initial_state()
     state.apply_action(1) # Ambassador
     state.apply_action(1) # Ambassador
@@ -275,7 +270,7 @@ def steal_test(game, bots):
     log_action_probs(bot, state, indent=2)
   logging.info("_____________________________________________")
 
-def bluff_seq_test(game, bots):
+def bluff_seq_test(game, bot):
   '''
   Opponent bluffs for most of game, pretending to have Duke and Captain.
   At the end opponent uses Exchange. 
@@ -284,7 +279,6 @@ def bluff_seq_test(game, bots):
   logging.info("Bluff seq test")
   for p in range(2):
     logging.info(f"  P{p+1} version")
-    bot = bots[p]
     state = game.new_initial_state()
     state.apply_action(1) # Ambassador
     state.apply_action(1) # Ambassador
@@ -309,7 +303,7 @@ def bluff_seq_test(game, bots):
     log_action_probs(bot, state, indent=2)
   logging.info("_____________________________________________")
 
-def random_seq_test(game, bots):
+def random_seq_test(game, bot):
   '''
   Test a random action sequence for opponent.
   Player should be more likely to challenge.
@@ -331,12 +325,10 @@ def random_seq_test(game, bots):
         action = np.random.choice(action_list, p=prob_list)
         state.apply_action(action)
       elif state.current_player() == 1-p: # opp
-        bot = bots[1-p]
         action = np.random.choice(state.legal_actions())
         state.apply_action(action)
       else: # player p
         legal = state.legal_actions()
-        bot = bots[p]
         if 11 in legal: # Challenge
           it += 1
           log_action_probs(bot, state, indent=2)
@@ -346,15 +338,15 @@ def random_seq_test(game, bots):
           state.apply_action(action)
   logging.info("_____________________________________________")
 
-def policy_tests(game, bots):
-  foreign_aid_test(game, bots)
-  coup_test(game, bots)
-  exchange_test(game, bots)
-  assassinate_test(game, bots)
-  counter_assassinate_test(game, bots)
-  steal_test(game, bots)
-  bluff_seq_test(game, bots)
-  random_seq_test(game, bots)
+def policy_tests(game, bot):
+  foreign_aid_test(game, bot)
+  coup_test(game, bot)
+  exchange_test(game, bot)
+  assassinate_test(game, bot)
+  counter_assassinate_test(game, bot)
+  steal_test(game, bot)
+  bluff_seq_test(game, bot)
+  random_seq_test(game, bot)
 
 def main(_):
   if len(FLAGS.log_file):
@@ -363,14 +355,14 @@ def main(_):
   game = pyspiel.load_game(FLAGS.game)
   with tf.Session() as sess:
     if FLAGS.algo == "deep_cfr":
-      bots = [get_deep_cfr_bot(pid, sess, game, tf, FLAGS, FLAGS.saved_dir, FLAGS.checkpoint_id) for pid in range(2)]
+      bot = get_deep_cfr_bot(0, sess, game, tf, FLAGS, FLAGS.saved_dir, FLAGS.checkpoint_id)
     elif FLAGS.algo == "nfsp":
-      bots = [get_nfsp_bot(pid, sess, FLAGS, FLAGS.saved_dir, FLAGS.checkpoint_id) for pid in range(2)]
+      bot = get_nfsp_bot(0, sess, FLAGS, FLAGS.saved_dir, FLAGS.checkpoint_id)
     else:
       logging.info(f"Algorithm {FLAGS.algo} not recognized")
       return
     
-    policy_tests(game, bots)
+    policy_tests(game, bot)
 
 if __name__ == "__main__":
   app.run(main)
