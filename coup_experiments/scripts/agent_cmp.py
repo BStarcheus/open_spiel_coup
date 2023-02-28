@@ -120,29 +120,32 @@ def main(_):
         # Test agents against each other
         p0_total_reward = 0
         total_ep_steps = 0
-        for _ in range(FLAGS.cmp_test_eps):
+        for p0_ind in range(len(players)): # Test each agent as both P1, P2 to be fair
+          if p0_ind == 1:
+            players = [players[1], players[0]]
+          for _ in range(FLAGS.cmp_test_eps):
 
-          state = game.new_initial_state()
-          while not state.is_terminal():
-            total_ep_steps += 1
-            if state.is_chance_node():
-              # Sample chance
-              outcomes_with_probs = state.chance_outcomes()
-              action_list, prob_list = zip(*outcomes_with_probs)
-              action = np.random.choice(action_list, p=prob_list)
-              state.apply_action(action)
-            else:
-              pid = state.current_player()
-              p = players[pid]
-              action = p.step(state)
-              state.apply_action(action)
+            state = game.new_initial_state()
+            while not state.is_terminal():
+              total_ep_steps += 1
+              if state.is_chance_node():
+                # Sample chance
+                outcomes_with_probs = state.chance_outcomes()
+                action_list, prob_list = zip(*outcomes_with_probs)
+                action = np.random.choice(action_list, p=prob_list)
+                state.apply_action(action)
+              else:
+                pid = state.current_player()
+                p = players[pid]
+                action = p.step(state)
+                state.apply_action(action)
 
-          p0_total_reward += state.returns()[0]
+            p0_total_reward += state.returns()[p0_ind]
 
-        p0_mean_reward = p0_total_reward / FLAGS.cmp_test_eps
+        p0_mean_reward = p0_total_reward / (2*FLAGS.cmp_test_eps)
         # p1 mean reward is * -1 (zero sum game)
         logging.info(f"  Mean rewards: [{p0_mean_reward}, {-1*p0_mean_reward}]")
-        logging.info(f"  Mean ep length: {total_ep_steps / FLAGS.cmp_test_eps}")
+        logging.info(f"  Mean ep length: {total_ep_steps / (2*FLAGS.cmp_test_eps)}")
 
 
 if __name__ == "__main__":
