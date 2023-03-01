@@ -7,6 +7,7 @@ from absl import logging
 import tensorflow.compat.v1 as tf
 
 from open_spiel.python.bots.human import HumanBot
+from open_spiel.python.bots.uniform_random import UniformRandomBot
 import pyspiel
 import numpy as np
 
@@ -18,7 +19,7 @@ tf.disable_v2_behavior()
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string("game", "coup", "Game name")
-flags.DEFINE_string("algo", "deep_cfr", "Algorithm which has a saved model in the given directory. deep_cfr or nfsp")
+flags.DEFINE_string("algo", "deep_cfr", "Algorithm which has a saved model in the given directory. deep_cfr, nfsp, random")
 flags.DEFINE_string("saved_dir", "/agents/deep_cfr/", "Directory with saved model")
 flags.DEFINE_string("checkpoint_id", "iter10", "The ID of the checkpoint. deep_cfr: iter{iter-num}, nfsp: ep{ep-num}")
 
@@ -85,6 +86,8 @@ def main(_):
       bot = get_deep_cfr_bot(1, sess, game, tf, FLAGS, FLAGS.saved_dir, FLAGS.checkpoint_id)
     elif FLAGS.algo == "nfsp":
       bot = get_nfsp_bot(1, sess, FLAGS, FLAGS.saved_dir, FLAGS.checkpoint_id)
+    elif FLAGS.algo == "random":
+      bot = UniformRandomBot(1, np.random.RandomState(4321))
     else:
       logging.info(f"Algorithm {FLAGS.algo} not recognized")
       return
@@ -109,6 +112,8 @@ def main(_):
       
       print(state.observation_string(0))
 
+    print("Opponent's view:")
+    print(state.observation_string(1))
 
 if __name__ == "__main__":
   app.run(main)
