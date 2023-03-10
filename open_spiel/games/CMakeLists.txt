@@ -50,6 +50,8 @@ set(GAME_SOURCES
   coordinated_mp.h
   coup.cc
   coup.h
+  crazy_eights.cc
+  crazy_eights.h
   cursor_go.cc
   cursor_go.h
   dark_chess.cc
@@ -358,6 +360,9 @@ add_executable(coup_test coup_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>
                $<TARGET_OBJECTS:algorithms>)
 add_test(coup_test coup_test)
+add_executable(crazy_eights_test crazy_eights_test.cc ${OPEN_SPIEL_OBJECTS}
+               $<TARGET_OBJECTS:tests>)
+add_test(crazy_eights_test crazy_eights_test)
 
 add_executable(crowd_modelling_test mfg/crowd_modelling_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>)
