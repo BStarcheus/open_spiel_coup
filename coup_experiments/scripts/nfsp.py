@@ -129,11 +129,6 @@ def main(unused_argv):
 
     sess.run(tf.global_variables_initializer())
 
-    # if FLAGS.use_checkpoints:
-    #   for agent in agents:
-    #     if agent.has_checkpoint(FLAGS.checkpoint_dir):
-    #       agent.restore(FLAGS.checkpoint_dir)
-
     total_rl_resp_time = 0
     first_start = time.time()
     for ep in range(FLAGS.num_train_episodes):

@@ -18,11 +18,8 @@ from absl import app
 from absl import flags
 from absl import logging
 
-from open_spiel.python import policy
 from open_spiel.python.algorithms import deep_cfr_tf2
-from open_spiel.python.algorithms import expected_game_score
 import pyspiel
-
 from coup_experiments.utils.logging import *
 import time
 
@@ -101,9 +98,6 @@ def main(unused_argv):
   logging.info("Final policy loss: '%s'", policy_loss)
   logging.info("Algo run time: %s sec", delta)
 
-  # average_policy = policy.tabular_policy_from_callable(
-  #     game, deep_cfr_solver.action_probabilities)
-
   start = time.time()
   from coup_experiments.algorithms.rl_response import rl_resp
   rl_resp(exploitee=deep_cfr_solver,
@@ -115,12 +109,6 @@ def main(unused_argv):
   logging.info("rl_resp run time: %s sec", delta)
   total_time = final_end - first_start
   logging.info("Total run time: %s sec", total_time)
-
-  # average_policy_values = expected_game_score.policy_value(
-  #     game.new_initial_state(), [average_policy] * 2,
-  #     probability_threshold=0.5)
-  # print("Computed player 0 value: {}".format(average_policy_values[0]))
-  # print("Computed player 1 value: {}".format(average_policy_values[1]))
 
 if __name__ == "__main__":
   app.run(main)

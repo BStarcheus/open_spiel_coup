@@ -20,11 +20,8 @@ from absl import logging
 
 import tensorflow.compat.v1 as tf
 
-from open_spiel.python import policy
 from open_spiel.python.algorithms import deep_cfr
-from open_spiel.python.algorithms import expected_game_score
 import pyspiel
-
 from coup_experiments.algorithms.rl_response import rl_resp
 from coup_experiments.utils.logging import *
 import time
@@ -137,26 +134,9 @@ def main(unused_argv):
     logging.info("Final policy loss: '%s'", policy_loss)
     logging.info("Algo run time: %s sec", delta)
 
-    # average_policy = policy.tabular_policy_from_callable(
-    #     game, deep_cfr_solver.action_probabilities)
-
-    # start = time.time()
-    # rl_resp(exploitee=deep_cfr_solver,
-    #         num_train_episodes=FLAGS.rl_resp_train_episodes,
-    #         eval_every=FLAGS.rl_resp_eval_every,
-    #         eval_episodes=FLAGS.rl_resp_eval_episodes)
     final_end = time.time()
-    # delta = final_end - start
-    # logging.info("rl_resp run time: %s sec", delta)
     total_time = final_end - first_start
     logging.info("Total run time: %s sec", total_time)
-
-    # average_policy_values = expected_game_score.policy_value(
-    #     game.new_initial_state(), [average_policy] * 2)
-    # print("Computed player 0 value: {}".format(average_policy_values[0]))
-    # print("Expected player 0 value: {}".format(-1 / 18))
-    # print("Computed player 1 value: {}".format(average_policy_values[1]))
-    # print("Expected player 1 value: {}".format(1 / 18))
 
 if __name__ == "__main__":
   app.run(main)

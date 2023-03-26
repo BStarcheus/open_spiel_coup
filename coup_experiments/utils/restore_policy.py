@@ -1,3 +1,5 @@
+"""Load saved agents by restoring the networks from the save files"""
+
 from open_spiel.python.algorithms import deep_cfr, nfsp
 from open_spiel.python import rl_environment
 from coup_experiments.utils.nfsp_policies import *
